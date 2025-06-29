@@ -1,0 +1,25 @@
+--Core Settings
+-- color
+vim.opt.termguicolors = true
+-- number
+vim.opt.number = true
+vim.opt.relativenumber = true
+-- tap
+vim.opt.expandtab = true
+vim.opt.tabstop = 2
+vim.opt.shiftwidth = 2
+vim.opt.smartindent = true
+-- case
+vim.opt.ignorecase = true
+vim.opt.smartcase = true
+-- confirm when exit
+vim.opt.confirm = true
+-- clipboard
+vim.opt.clipboard = "unnamedplus"
+-- undo
+vim.opt.undofile = true
+vim.opt.undodir = vim.fn.stdpath("data") .. "/undo"
+-- gf
+vim.opt.path:append("**")
+vim.opt.suffixesadd:append(".lua")
+

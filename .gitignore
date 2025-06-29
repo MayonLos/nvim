@@ -1,0 +1,15 @@
+*.swp
+*.log
+/lazy-lock.json
+/.mason
+plugin/packer_compiled.lua
+*.swp
+*.log
+/lazy-lock.json
+/.mason
+plugin/packer_compiled.lua
+# 忽略 secrets 目录及其所有内容
+secrets/
+# 忽略 .history 隐藏目录及其所有内容
+.history/
+selected_theme.txt
