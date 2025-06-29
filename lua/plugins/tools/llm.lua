@@ -20,6 +20,8 @@ return {
         save_session = true,
         max_history = 15,
         max_history_name_length = 20,
+        -- 尝试设置 winhighlight 使用 NormalFloat，确保背景色非透明
+        winhighlight = "Normal:NormalFloat,FloatBorder:NormalFloat",
         app_handler = {
           Translate = {
             handler = tools.flexi_handler,
@@ -62,10 +64,16 @@ Use bullet points, section headings, and examples if necessary. Answer in Markdo
               url = "https://api.deepseek.com/chat/completions",
               model = "deepseek-chat",
               api_type = "openai",
+              -- 针对 Ask handler 单独设置 winhighlight
+              win_options = { winhighlight = "Normal:NormalFloat,FloatBorder:NormalFloat" },
             },
           },
         },
       })
+
+      -- 备选方案：全局设置 NormalFloat 非透明背景
+      -- 如果插件不支持 winhighlight，可取消下面注释并设置适合的颜色
+      -- vim.api.nvim_set_hl(0, 'NormalFloat', { bg = '#1e222a' }) -- 示例颜色，替换为您主题的非透明颜色
     end,
     keys = {
       { "<leader>ac", mode = "n", "<cmd>LLMSessionToggle<cr>",              desc = "  Open Chat Session" },
@@ -80,4 +88,3 @@ Use bullet points, section headings, and examples if necessary. Answer in Markdo
     },
   },
 }
-
