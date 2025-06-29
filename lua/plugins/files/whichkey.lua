@@ -14,6 +14,7 @@ return {
         { "<leader>x", group = "diagnostics" },
         { "<leader>m", group = "markdown" },
         { "<leader>a", group = "AI" },
+        { "<leader>t", group = "terminal" }
       })
     end
   }
