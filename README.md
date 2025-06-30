@@ -1,4 +1,3 @@
-
 ---
 
 ## 🛠️ Prerequisites / 环境依赖说明
@@ -137,51 +136,5 @@ vim.g.clipboard = {
 ---
 
 [nerdfont]: https://www.nerdfonts.com/font-downloads
-
----
-
-
-## 🔌 插件架构概览（Powered by `lazy.nvim`）
-
-本配置使用 [`lazy.nvim`](https://github.com/folke/lazy.nvim) 进行插件管理，共包含 39 个插件，启动时间约 47ms。
-
-### 📦 插件功能分类
-
-| 功能模块           | 插件示例                                                                                 |
-| -------------- | ------------------------------------------------------------------------------------ |
-| 🎨 UI 美化       | `catppuccin`, `mini.statusline`, `noice.nvim`, `nvim-notify`, `starter`, `which-key` |
-| 🧠 补全与 LSP     | `blink.cmp`, `friendly-snippets`, `nvim-lspconfig`, `mason.nvim`, `llm.nvim`         |
-| 🧰 编辑增强        | `mini.comment`, `mini.move`, `mini.indentscope`, `nvim-autopairs`                    |
-| 🔍 文件与搜索       | `telescope.nvim`, `mini.files`, `which-key.nvim`                                     |
-| 🧪 Lint 与诊断    | `nvim-lint`, `trouble.nvim`, `mason-nvim-lint`, `undotree`                           |
-| 🐞 调试支持        | `nvim-dap`, `nvim-dap-ui`, `nvim-dap-virtual-text`（按需加载）                             |
-| 🧾 Markdown 支持 | `render-markdown.nvim`                                                               |
-| 🧩 工具辅助        | `toggleterm`, `gitsigns`, `sessions`, `llm.nvim`                                     |
-
----
-
-## 🗂️ 配置结构概览（模块化设计）
-
-```bash
-nvim/
-├── init.lua                 # 主入口
-├── lazy-lock.json           # lazy.nvim 插件锁定文件
-├── lua/
-│   ├── config/              # lazy.nvim 启动配置
-│   ├── core/                # 基础设置：keymap、option、autocmd、commands
-│   ├── plugins/             # 插件模块（按功能分类）
-│   │   ├── coding/          # LSP / Lint / Trouble
-│   │   ├── editor/          # 编辑增强（缩进、移动、注释、补全）
-│   │   ├── files/           # 文件导航与搜索（Telescope, mini.files）
-│   │   ├── git/             # Git UI 支持（如 gitsigns）
-│   │   ├── markdown/        # Markdown 渲染
-│   │   ├── tools/           # 工具集（toggleterm, llm, sessions, undotree）
-│   │   ├── treesitter/      # Treesitter 配置
-│   │   └── ui/              # UI 美化相关
-│   ├── runner/              # 自定义运行器（逻辑 / UI）
-│   ├── user/                # 用户状态（如 last_theme.lua）
-│   └── utils/               # 工具函数集合
-└── README.md
-```
 
 ---

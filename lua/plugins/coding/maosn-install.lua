@@ -27,6 +27,7 @@ return {
 			"shellcheck",
 			"pylint",
 			"cpplint",
+			"markdownlint",
 		},
 		run_on_start = true,
 		auto_update = false,
