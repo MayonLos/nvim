@@ -1,23 +1,21 @@
----
-
 ## 🛠️ Prerequisites / 环境依赖说明
 
 为了让本配置正常运行，请先确保以下通用依赖已正确安装：
 
 ### 📦 通用依赖项
 
-| 功能           | 说明与建议                                            |
-| ------------ | ------------------------------------------------ |
-| 文件搜索工具       | `fd`（Ubuntu 中为 `fdfind`）+ `ripgrep` (`rg`)       |
-| 解压缩工具        | `unzip`                                          |
-| 编译环境         | `make`, `gcc`, `base-devel`（或 `build-essential`） |
-| Git 支持       | `git`                                            |
-| Nerd Font 字体 | 推荐安装 [JetBrainsMono Nerd Font][nerdfont]         |
-| 剪贴板工具        | `xclip`（X11）或 `wl-clipboard`（Wayland）            |
-| Python 环境    | `python3` + `pip`                                |
-| Node.js 环境   | `nodejs` + `npm`                                 |
-| Lua 环境       | `lua`, `luajit`, `luarocks`                      |
-| 下载工具         | `curl`（部分插件如 `llm.nvim` 使用）                      |
+| 功能           | 说明与建议                                          |
+| -------------- | --------------------------------------------------- |
+| 文件搜索工具   | `fd`（Ubuntu 中为 `fdfind`）+ `ripgrep` (`rg`)      |
+| 解压缩工具     | `unzip`                                             |
+| 编译环境       | `make`, `gcc`, `base-devel`（或 `build-essential`） |
+| Git 支持       | `git`                                               |
+| Nerd Font 字体 | 推荐安装 [JetBrainsMono Nerd Font][nerdfont]        |
+| 剪贴板工具     | `xclip`（X11）或 `wl-clipboard`（Wayland）          |
+| Python 环境    | `python3` + `pip`                                   |
+| Node.js 环境   | `nodejs` + `npm`                                    |
+| Lua 环境       | `lua`, `luajit`, `luarocks`                         |
+| 下载工具       | `curl`（部分插件如 `llm.nvim` 使用）                |
 
 ---
 
