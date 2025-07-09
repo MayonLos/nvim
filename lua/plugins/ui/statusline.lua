@@ -2,27 +2,54 @@ return {
 	"echasnovski/mini.statusline",
 	version = false,
 	event = "VeryLazy",
+	dependencies = { "nvim-tree/nvim-web-devicons" },
 	config = function()
 		local statusline = require("mini.statusline")
+		local devicons = require("nvim-web-devicons")
 
 		statusline.setup({
 			use_icons = true,
 			set_vim_settings = false,
+			content = {
+				active = function()
+					local left = table.concat({
+						statusline.section_mode(),
+						statusline.section_git(),
+						statusline.section_diagnostics(),
+					}, " 󰇘 ")
+
+					local right = table.concat({
+						statusline.section_lsp(),
+						statusline.section_location(),
+					}, " 󰇘 ")
+
+					return left .. "%=" .. right
+				end,
+
+				inactive = function()
+					return statusline.section_mode()
+				end,
+			},
 		})
 
 		statusline.section_location = function()
-			local line = vim.fn.line(".")
-			local col = vim.fn.virtcol(".")
-			return string.format(" %d:%d", line, col)
+			return string.format(" %d:%d", vim.fn.line("."), vim.fn.virtcol("."))
 		end
 
-		statusline.section_filename = function()
-			local name = vim.fn.expand("%:t")
-			if name == "" then
-				return "[No Name]"
-			end
-			local icon = require("mini.icons").get("file", name, { default = true }) or ""
-			return string.format("%s %s", icon, name)
+		statusline.section_mode = function()
+			local mode_map = {
+				n = "NORMAL",
+				i = "INSERT",
+				v = "VISUAL",
+				V = "V-LINE",
+				["\22"] = "V-BLOCK",
+				c = "COMMAND",
+				R = "REPLACE",
+				t = "TERMINAL",
+			}
+			local mode_code = vim.fn.mode()
+			local mode_text = mode_map[mode_code] or mode_code
+			return string.format(" %s", mode_text)
 		end
 
 		statusline.section_git = function()
@@ -34,41 +61,32 @@ return {
 			if vim.tbl_isempty(clients) then
 				return ""
 			end
-			local names = vim.tbl_map(function(c)
-				return c.name
-			end, clients)
-			return " " .. table.concat(names, ", ")
+			local names = {}
+			for _, client in ipairs(clients) do
+				if client.name ~= "null-ls" then
+					table.insert(names, client.name)
+				end
+			end
+			return #names > 0 and (" " .. table.concat(names, ", ")) or ""
 		end
 
 		statusline.section_diagnostics = function()
-			local e = #vim.diagnostic.get(0, { severity = vim.diagnostic.severity.ERROR })
-			local w = #vim.diagnostic.get(0, { severity = vim.diagnostic.severity.WARN })
-			return (e > 0 or w > 0) and string.format(" %d  %d", e, w) or ""
-		end
+			local errors = #vim.diagnostic.get(0, { severity = vim.diagnostic.severity.ERROR })
+			local warnings = #vim.diagnostic.get(0, { severity = vim.diagnostic.severity.WARN })
 
-		statusline.section_c = function()
-			return table.concat(
-				vim.tbl_filter(function(s)
-					return s ~= ""
-				end, {
-					statusline.section_filename(),
-					statusline.section_git(),
-					statusline.section_diagnostics(),
-				}),
-				" 󰇘 "
-			)
-		end
+			if errors == 0 and warnings == 0 then
+				return ""
+			end
 
-		statusline.section_x = function()
-			return table.concat(
-				vim.tbl_filter(function(s)
-					return s ~= ""
-				end, {
-					statusline.section_lsp(),
-					statusline.section_location(),
-				}),
-				" 󰇘 "
-			)
+			local parts = {}
+			if errors > 0 then
+				table.insert(parts, string.format(" %d", errors))
+			end
+			if warnings > 0 then
+				table.insert(parts, string.format(" %d", warnings))
+			end
+
+			return table.concat(parts, " ")
 		end
 	end,
 }

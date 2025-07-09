@@ -1,12 +1,21 @@
 return {
+	-- Core Telescope
 	{
 		"nvim-telescope/telescope.nvim",
-		tag = "0.1.8",
+		-- omit `tag` so you always get the latest stable; set `version = false` to track `main`
+		version = false,
 		cmd = "Telescope",
 		dependencies = {
 			"nvim-lua/plenary.nvim",
+			-- fzf-native now requires a build step
+			{ "nvim-telescope/telescope-fzf-native.nvim", build = "make" },
 			"nvim-telescope/telescope-ui-select.nvim",
-			{ "ryanmsnyder/toggleterm-manager.nvim", dependencies = "akinsho/toggleterm.nvim" },
+			"debugloop/telescope-undo.nvim",
+			-- toggleterm‑manager extension
+			{
+				"ryanmsnyder/toggleterm-manager.nvim",
+				dependencies = { "akinsho/toggleterm.nvim" },
+			},
 		},
 		keys = {
 			{ "<leader>ff", "<cmd>Telescope find_files<cr>", desc = "Find Files" },
@@ -16,61 +25,168 @@ return {
 			{ "<leader>fh", "<cmd>Telescope help_tags<cr>", desc = "Help Tags" },
 			{ "<leader>ft", "<cmd>ThemePicker<cr>", desc = "Theme Picker" },
 			{ "<leader>tm", "<cmd>Telescope toggleterm_manager<cr>", desc = "Term Manager" },
+			{ "<leader>fu", "<cmd>Telescope undo<cr>", desc = "Undo History" },
+			{ "<leader>fr", "<cmd>Telescope resume<cr>", desc = "Resume Last Search" },
+			{ "<leader>fc", "<cmd>Telescope commands<cr>", desc = "Commands" },
+			{ "<leader>fk", "<cmd>Telescope keymaps<cr>", desc = "Keymaps" },
 		},
-		opts = function()
-			local dd = require("telescope.themes").get_dropdown
-			return {
-				defaults = {
-					layout_strategy = "horizontal",
-					layout_config = { prompt_position = "top" },
-					sorting_strategy = "ascending",
-					winblend = 0,
-					mappings = { i = { ["<C-j>"] = "move_selection_next", ["<C-k>"] = "move_selection_previous" } },
+		opts = {
+			defaults = {
+				layout_strategy = "horizontal",
+				layout_config = {
+					horizontal = {
+						preview_width = 0.55,
+						prompt_position = "top",
+						height = 0.9,
+						width = 0.9,
+					},
 				},
-				extensions = { ["ui-select"] = dd({ previewer = false, prompt_title = false }) },
-			}
-		end,
+				sorting_strategy = "ascending",
+				winblend = 5,
+				border = true,
+				borderchars = { "─", "│", "─", "│", "╭", "╮", "╯", "╰" },
+				path_display = { "truncate" },
+				file_ignore_patterns = {
+					"%.git/",
+					"node_modules/",
+					"%.venv/",
+					"__pycache__/",
+					"%.class",
+					"%.jar",
+					"%.o",
+					"%.out",
+					"%.lock",
+				},
+				mappings = {
+					i = {
+						["<C-j>"] = "move_selection_next",
+						["<C-k>"] = "move_selection_previous",
+						["<C-s>"] = "select_horizontal",
+						["<C-v>"] = "select_vertical",
+						["<C-t>"] = "select_tab",
+						["<C-u>"] = "preview_scrolling_up",
+						["<C-d>"] = "preview_scrolling_down",
+						["<C-q>"] = "send_selected_to_qflist",
+					},
+					n = {
+						["<C-s>"] = "select_horizontal",
+						["<C-v>"] = "select_vertical",
+						["<C-t>"] = "select_tab",
+					},
+				},
+				dynamic_preview_title = true,
+				set_env = { COLORTERM = "truecolor" },
+			},
+			pickers = {
+				find_files = {
+					hidden = true,
+					find_command = { "fd", "--type", "f", "--strip-cwd-prefix" },
+				},
+				live_grep = {
+					additional_args = { "--hidden" },
+				},
+				buffers = {
+					sort_lastused = true,
+					ignore_current_buffer = false,
+					sort_mru = true,
+				},
+			},
+			extensions = {
+				-- keep only core extensions here; file-browser is now a separate plugin
+				["ui-select"] = require("telescope.themes").get_dropdown({ previewer = false }),
+				fzf = {
+					fuzzy = true,
+					override_generic_sorter = true,
+					override_file_sorter = true,
+					case_mode = "smart_case",
+				},
+				undo = {
+					use_delta = true,
+					side_by_side = true,
+					vim_diff_opts = { ctxlen = vim.o.scrolloff },
+					entry_format = "state #$ID, $STAT, $TIME",
+				},
+			},
+		},
 		config = function(_, opts)
-			local telescope = require("telescope")
-			telescope.setup(opts)
-			telescope.load_extension("ui-select")
-			telescope.load_extension("toggleterm_manager")
+			local t = require("telescope")
+			t.setup(opts)
+			for _, ext in ipairs({ "fzf", "ui-select", "undo", "toggleterm_manager" }) do
+				pcall(t.load_extension, ext)
+			end
 
+			-- Theme Picker command
 			local theme_file = vim.fn.stdpath("config") .. "/lua/user/last_theme.lua"
-			vim.fn.mkdir(vim.fn.fnamemodify(theme_file, ":h"), "p")
+			vim.fn.mkdir(vim.fn.fnamemodify(theme_file, ":h"), "p", "0755")
 
-			local function ensure_colorscheme_loaded(name)
-				if name:find("^catppuccin") then
+			local function ensure_colorscheme(name)
+				if name:match("^catppuccin") then
 					require("lazy").load({ plugins = { "catppuccin" } })
+				elseif name:match("^tokyonight") then
+					require("lazy").load({ plugins = { "tokyonight" } })
 				end
 			end
 
-			local function theme_picker()
+			vim.api.nvim_create_user_command("ThemePicker", function()
+				local last = vim.fn.filereadable(theme_file) == 1 and loadfile(theme_file)() or "default"
 				require("telescope.builtin").colorscheme({
 					enable_preview = true,
-					attach_mappings = function(prompt_bufnr, map)
+					default = last,
+					attach_mappings = function(bufnr, map)
 						local actions = require("telescope.actions")
-						local state = require("telescope.actions.state")
-						local function set_and_save()
-							local entry = state.get_selected_entry()
-							local name = entry and entry.value or nil
-							if name then
-								vim.fn.writefile({ "return " .. string.format("%q", name) }, theme_file)
-								ensure_colorscheme_loaded(name)
-								vim.schedule(function()
-									pcall(vim.cmd.colorscheme, name)
-								end)
+						local action_state = require("telescope.actions.state")
+						local function set_theme()
+							local entry = action_state.get_selected_entry()
+							if not entry then
+								return
 							end
-							actions.close(prompt_bufnr)
+							local name = entry.value
+							vim.fn.writefile({ "return " .. vim.inspect(name) }, theme_file)
+							ensure_colorscheme(name)
+							vim.schedule(function()
+								vim.cmd.colorscheme(name)
+							end)
+							actions.close(bufnr)
 						end
-						map("i", "<CR>", set_and_save)
-						map("n", "<CR>", set_and_save)
+						map("i", "<CR>", set_theme)
+						map("n", "<CR>", set_theme)
+						map("i", "<C-p>", function()
+							local entry = action_state.get_selected_entry()
+							if entry then
+								ensure_colorscheme(entry.value)
+								pcall(vim.cmd.colorscheme, entry.value)
+							end
+						end)
 						return true
 					end,
 				})
-			end
+			end, {})
+		end,
+	},
 
-			vim.api.nvim_create_user_command("ThemePicker", theme_picker, {})
+	-- File Browser (now a standalone extension)
+	{
+		"nvim-telescope/telescope-file-browser.nvim",
+		dependencies = { "nvim-telescope/telescope.nvim", "nvim-lua/plenary.nvim" },
+		keys = {
+			{
+				"<leader>fd",
+				function()
+					require("telescope").extensions.file_browser.file_browser()
+				end,
+				desc = "Telescope File Browser",
+			},
+		},
+		opts = {
+			theme = "dropdown",
+			hijack_netrw = true,
+			hidden = true,
+			respect_gitignore = false,
+			-- you can add mappings or other picker-specific defaults here
+		},
+		config = function(_, opts)
+			require("telescope").setup({ extensions = { file_browser = opts } })
+			require("telescope").load_extension("file_browser")
 		end,
 	},
 }

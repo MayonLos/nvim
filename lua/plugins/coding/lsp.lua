@@ -1,11 +1,11 @@
 return {
 	{
 		"neovim/nvim-lspconfig",
-		event = "BufReadPre",
+		event = { "BufReadPre", "BufNewFile" },
 		dependencies = {
 			{ "mason-org/mason.nvim", opts = {} },
 			{ "saghen/blink.cmp" },
-			{ "echasnovski/mini.icons" },
+			{ "nvim-tree/nvim-web-devicons" },
 		},
 
 		opts = {
@@ -20,15 +20,19 @@ return {
 
 		config = function(_, opts)
 			require("mason").setup()
-			require("utils.icons").apply_diagnostic_signs()
+
+			if pcall(require, "utils.icons") then
+				require("utils.icons").apply_diagnostic_signs()
+			end
 
 			local on_attach = function(_, bufnr)
-				local function map(lhs, rhs, desc)
+				local map = function(lhs, rhs, desc)
 					vim.keymap.set("n", "<leader>l" .. lhs, rhs, {
 						buffer = bufnr,
 						desc = desc and ("LSP: " .. desc) or nil,
 					})
 				end
+
 				map("d", vim.lsp.buf.definition, "Goto Definition")
 				map("k", vim.lsp.buf.hover, "Hover Doc")
 				map("i", vim.lsp.buf.implementation, "Goto Implementation")
@@ -38,13 +42,13 @@ return {
 				map("R", vim.lsp.buf.references, "References")
 			end
 
-			local capabilities = require("blink.cmp").get_lsp_capabilities()
 			local lspconfig = require("lspconfig")
+			local capabilities = require("blink.cmp").get_lsp_capabilities()
 
-			for server, config in pairs(opts.servers) do
-				lspconfig[server].setup(vim.tbl_deep_extend("force", {
-					on_attach = on_attach,
+			for name, config in pairs(opts.servers) do
+				lspconfig[name].setup(vim.tbl_deep_extend("force", {
 					capabilities = capabilities,
+					on_attach = on_attach,
 				}, config or {}))
 			end
 		end,
