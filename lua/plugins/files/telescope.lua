@@ -2,16 +2,13 @@ return {
 	-- Core Telescope
 	{
 		"nvim-telescope/telescope.nvim",
-		-- omit `tag` so you always get the latest stable; set `version = false` to track `main`
 		version = false,
 		cmd = "Telescope",
 		dependencies = {
 			"nvim-lua/plenary.nvim",
-			-- fzf-native now requires a build step
 			{ "nvim-telescope/telescope-fzf-native.nvim", build = "make" },
 			"nvim-telescope/telescope-ui-select.nvim",
 			"debugloop/telescope-undo.nvim",
-			-- toggleterm‑manager extension
 			{
 				"ryanmsnyder/toggleterm-manager.nvim",
 				dependencies = { "akinsho/toggleterm.nvim" },
@@ -92,7 +89,6 @@ return {
 				},
 			},
 			extensions = {
-				-- keep only core extensions here; file-browser is now a separate plugin
 				["ui-select"] = require("telescope.themes").get_dropdown({ previewer = false }),
 				fzf = {
 					fuzzy = true,
@@ -161,32 +157,6 @@ return {
 					end,
 				})
 			end, {})
-		end,
-	},
-
-	-- File Browser (now a standalone extension)
-	{
-		"nvim-telescope/telescope-file-browser.nvim",
-		dependencies = { "nvim-telescope/telescope.nvim", "nvim-lua/plenary.nvim" },
-		keys = {
-			{
-				"<leader>fd",
-				function()
-					require("telescope").extensions.file_browser.file_browser()
-				end,
-				desc = "Telescope File Browser",
-			},
-		},
-		opts = {
-			theme = "dropdown",
-			hijack_netrw = true,
-			hidden = true,
-			respect_gitignore = false,
-			-- you can add mappings or other picker-specific defaults here
-		},
-		config = function(_, opts)
-			require("telescope").setup({ extensions = { file_browser = opts } })
-			require("telescope").load_extension("file_browser")
 		end,
 	},
 }

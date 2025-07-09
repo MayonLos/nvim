@@ -1,5 +1,6 @@
 return {
 	"romgrk/barbar.nvim",
+	event = "BufWinEnter",
 	version = "^1.0.0",
 	dependencies = {
 		"nvim-tree/nvim-web-devicons",
