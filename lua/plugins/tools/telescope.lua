@@ -1,158 +1,196 @@
 return {
-	-- Core Telescope
 	{
 		"nvim-telescope/telescope.nvim",
-		version = false,
+		tag = "0.1.8",
 		cmd = "Telescope",
 		dependencies = {
 			"nvim-lua/plenary.nvim",
-			{ "nvim-telescope/telescope-fzf-native.nvim", build = "make" },
 			"nvim-telescope/telescope-ui-select.nvim",
 			"debugloop/telescope-undo.nvim",
 			{
 				"ryanmsnyder/toggleterm-manager.nvim",
-				dependencies = { "akinsho/toggleterm.nvim" },
+				dependencies = "akinsho/toggleterm.nvim",
 			},
 		},
 		keys = {
-			{ "<leader>ff", "<cmd>Telescope find_files<cr>", desc = "Find Files" },
-			{ "<leader>fg", "<cmd>Telescope live_grep<cr>", desc = "Live Grep" },
-			{ "<leader>fb", "<cmd>Telescope buffers<cr>", desc = "Buffers" },
-			{ "<leader>fo", "<cmd>Telescope oldfiles<cr>", desc = "Old Files" },
-			{ "<leader>fh", "<cmd>Telescope help_tags<cr>", desc = "Help Tags" },
-			{ "<leader>ft", "<cmd>ThemePicker<cr>", desc = "Theme Picker" },
-			{ "<leader>tm", "<cmd>Telescope toggleterm_manager<cr>", desc = "Term Manager" },
-			{ "<leader>fu", "<cmd>Telescope undo<cr>", desc = "Undo History" },
-			{ "<leader>fr", "<cmd>Telescope resume<cr>", desc = "Resume Last Search" },
-			{ "<leader>fc", "<cmd>Telescope commands<cr>", desc = "Commands" },
-			{ "<leader>fk", "<cmd>Telescope keymaps<cr>", desc = "Keymaps" },
+			-- Core
+			{
+				"<leader>ff",
+				function()
+					require("telescope.builtin").find_files()
+				end,
+				desc = "Find Files",
+			},
+			{
+				"<leader>fg",
+				function()
+					require("telescope.builtin").live_grep()
+				end,
+				desc = "Live Grep",
+			},
+			{
+				"<leader>fb",
+				function()
+					require("telescope.builtin").buffers()
+				end,
+				desc = "Buffers",
+			},
+			{
+				"<leader>fo",
+				function()
+					require("telescope.builtin").oldfiles()
+				end,
+				desc = "Old Files",
+			},
+			{
+				"<leader>fh",
+				function()
+					require("telescope.builtin").help_tags()
+				end,
+				desc = "Help Tags",
+			},
+
+			-- Extensions
+			{
+				"<leader>fu",
+				function()
+					local ok, _ = pcall(require("telescope").load_extension, "undo")
+					if ok then
+						require("telescope").extensions.undo.undo()
+					else
+						vim.notify("telescope-undo failed to load", vim.log.levels.ERROR)
+					end
+				end,
+				desc = "Undo History",
+			},
+			{
+				"<leader>tm",
+				function()
+					local ok, _ = pcall(require("telescope").load_extension, "toggleterm_manager")
+					if ok then
+						require("telescope").extensions.toggleterm_manager.toggleterm_manager()
+					else
+						vim.notify("toggleterm_manager failed to load", vim.log.levels.ERROR)
+					end
+				end,
+				desc = "ToggleTerm Manager",
+			},
+
+			-- Theme Picker
+			{
+				"<leader>ft",
+				function()
+					vim.cmd("ThemePicker")
+				end,
+				desc = "Theme Picker",
+			},
 		},
-		opts = {
-			defaults = {
-				layout_strategy = "horizontal",
-				layout_config = {
-					horizontal = {
-						preview_width = 0.55,
+
+		opts = function()
+			local actions = require("telescope.actions")
+			local dropdown = require("telescope.themes").get_dropdown
+
+			return {
+				defaults = {
+					layout_strategy = "horizontal",
+					layout_config = {
 						prompt_position = "top",
+						preview_width = 0.55,
 						height = 0.9,
 						width = 0.9,
 					},
-				},
-				sorting_strategy = "ascending",
-				winblend = 5,
-				border = true,
-				borderchars = { "─", "│", "─", "│", "╭", "╮", "╯", "╰" },
-				path_display = { "truncate" },
-				file_ignore_patterns = {
-					"%.git/",
-					"node_modules/",
-					"%.venv/",
-					"__pycache__/",
-					"%.class",
-					"%.jar",
-					"%.o",
-					"%.out",
-					"%.lock",
-				},
-				mappings = {
-					i = {
-						["<C-j>"] = "move_selection_next",
-						["<C-k>"] = "move_selection_previous",
-						["<C-s>"] = "select_horizontal",
-						["<C-v>"] = "select_vertical",
-						["<C-t>"] = "select_tab",
-						["<C-u>"] = "preview_scrolling_up",
-						["<C-d>"] = "preview_scrolling_down",
-						["<C-q>"] = "send_selected_to_qflist",
-					},
-					n = {
-						["<C-s>"] = "select_horizontal",
-						["<C-v>"] = "select_vertical",
-						["<C-t>"] = "select_tab",
+					sorting_strategy = "ascending",
+					path_display = { "truncate" },
+					file_ignore_patterns = { "%.git/", "node_modules/", "%.venv/", "__pycache__/" },
+
+					mappings = {
+						i = {
+							["<C-j>"] = "move_selection_next",
+							["<C-k>"] = "move_selection_previous",
+							["<C-y>"] = function(prompt_bufnr)
+								local entry = require("telescope.actions.state").get_selected_entry()
+								if entry then
+									local val = entry.path or entry.value
+									vim.fn.setreg("+", val)
+									vim.notify("Copied to clipboard: " .. val, vim.log.levels.INFO)
+								end
+							end,
+						},
 					},
 				},
-				dynamic_preview_title = true,
-				set_env = { COLORTERM = "truecolor" },
-			},
-			pickers = {
-				find_files = {
-					hidden = true,
-					find_command = { "fd", "--type", "f", "--strip-cwd-prefix" },
+
+				pickers = {
+					find_files = {
+						hidden = true,
+						find_command = { "fd", "--type", "f", "--strip-cwd-prefix" },
+					},
+					live_grep = {
+						additional_args = { "--hidden" },
+					},
+					buffers = {
+						sort_lastused = true,
+						ignore_current_buffer = false,
+						sort_mru = true,
+						show_all_buffers = true,
+					},
 				},
-				live_grep = {
-					additional_args = { "--hidden" },
+
+				extensions = {
+					["ui-select"] = dropdown({ previewer = false, prompt_title = false }),
+					undo = {
+						use_delta = true,
+						side_by_side = true,
+						vim_diff_opts = { ctxlen = vim.o.scrolloff },
+						entry_format = "state #$ID, $STAT, $TIME",
+					},
 				},
-				buffers = {
-					sort_lastused = true,
-					ignore_current_buffer = false,
-					sort_mru = true,
-				},
-			},
-			extensions = {
-				["ui-select"] = require("telescope.themes").get_dropdown({ previewer = false }),
-				fzf = {
-					fuzzy = true,
-					override_generic_sorter = true,
-					override_file_sorter = true,
-					case_mode = "smart_case",
-				},
-				undo = {
-					use_delta = true,
-					side_by_side = true,
-					vim_diff_opts = { ctxlen = vim.o.scrolloff },
-					entry_format = "state #$ID, $STAT, $TIME",
-				},
-			},
-		},
+			}
+		end,
+
 		config = function(_, opts)
-			local t = require("telescope")
-			t.setup(opts)
-			for _, ext in ipairs({ "fzf", "ui-select", "undo", "toggleterm_manager" }) do
-				pcall(t.load_extension, ext)
+			local telescope = require("telescope")
+			telescope.setup(opts)
+
+			for _, ext in ipairs({ "ui-select", "undo", "toggleterm_manager" }) do
+				local ok, err = pcall(telescope.load_extension, ext)
+				if not ok then
+					vim.notify(
+						"Failed to load Telescope extension: " .. ext .. "\n" .. tostring(err),
+						vim.log.levels.ERROR
+					)
+				end
 			end
 
-			-- Theme Picker command
+			-- ThemePicker 命令
 			local theme_file = vim.fn.stdpath("config") .. "/lua/user/last_theme.lua"
-			vim.fn.mkdir(vim.fn.fnamemodify(theme_file, ":h"), "p", "0755")
+			vim.fn.mkdir(vim.fn.fnamemodify(theme_file, ":h"), "p")
 
-			local function ensure_colorscheme(name)
+			local function ensure_colorscheme_loaded(name)
 				if name:match("^catppuccin") then
 					require("lazy").load({ plugins = { "catppuccin" } })
-				elseif name:match("^tokyonight") then
-					require("lazy").load({ plugins = { "tokyonight" } })
 				end
 			end
 
 			vim.api.nvim_create_user_command("ThemePicker", function()
-				local last = vim.fn.filereadable(theme_file) == 1 and loadfile(theme_file)() or "default"
 				require("telescope.builtin").colorscheme({
 					enable_preview = true,
-					default = last,
-					attach_mappings = function(bufnr, map)
+					attach_mappings = function(prompt_bufnr, map)
 						local actions = require("telescope.actions")
-						local action_state = require("telescope.actions.state")
-						local function set_theme()
-							local entry = action_state.get_selected_entry()
-							if not entry then
-								return
+						local state = require("telescope.actions.state")
+						local function apply_theme()
+							local entry = state.get_selected_entry()
+							if entry and entry.value then
+								local name = entry.value
+								ensure_colorscheme_loaded(name)
+								vim.fn.writefile({ "return " .. string.format("%q", name) }, theme_file)
+								vim.schedule(function()
+									pcall(vim.cmd.colorscheme, name)
+								end)
 							end
-							local name = entry.value
-							vim.fn.writefile({ "return " .. vim.inspect(name) }, theme_file)
-							ensure_colorscheme(name)
-							vim.schedule(function()
-								vim.cmd.colorscheme(name)
-							end)
-							actions.close(bufnr)
+							actions.close(prompt_bufnr)
 						end
-						map("i", "<CR>", set_theme)
-						map("n", "<CR>", set_theme)
-						map("i", "<C-p>", function()
-							local entry = action_state.get_selected_entry()
-							if entry then
-								ensure_colorscheme(entry.value)
-								pcall(vim.cmd.colorscheme, entry.value)
-							end
-						end)
+						map("i", "<CR>", apply_theme)
+						map("n", "<CR>", apply_theme)
 						return true
 					end,
 				})
