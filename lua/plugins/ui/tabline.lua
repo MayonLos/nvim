@@ -1,7 +1,7 @@
 return {
 	"romgrk/barbar.nvim",
-	event = "BufWinEnter",
 	version = "^1.0.0",
+	event = "VeryLazy",
 	dependencies = {
 		"nvim-tree/nvim-web-devicons",
 		"lewis6991/gitsigns.nvim",
@@ -23,22 +23,22 @@ return {
 			buffer_index = false,
 			buffer_number = false,
 			button = "",
-			gitsigns = {
-				added = { enabled = true, icon = "+" },
-				changed = { enabled = true, icon = "~" },
-				deleted = { enabled = true, icon = "-" },
-			},
 			modified = { button = "●" },
 			pinned = { button = "", filename = true },
 			separator = { left = "▎", right = "" },
 			filetype = { enabled = true, custom_colors = false },
 			preset = "default",
+			gitsigns = {
+				added = { enabled = true, icon = "+" },
+				changed = { enabled = true, icon = "~" },
+				deleted = { enabled = true, icon = "-" },
+			},
 		},
 
 		sidebar_filetypes = {
 			NvimTree = true,
 			undotree = { text = "undotree", align = "center" },
-			Outline = { event = "BufWinLeave", text = "symbols-outline", align = "right" },
+			Outline = { text = "symbols-outline", align = "right" },
 		},
 
 		sort = {
