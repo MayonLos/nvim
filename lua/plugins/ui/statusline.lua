@@ -6,7 +6,6 @@ return {
 			"nvim-tree/nvim-web-devicons",
 			"neovim/nvim-lspconfig",
 			"lewis6991/gitsigns.nvim",
-			"monkoose/neocodeium",
 			"catppuccin/nvim",
 		},
 		config = function()
@@ -101,42 +100,6 @@ return {
 				update = { "DiagnosticChanged" },
 			}
 
-			-- NeoCodeium component
-			local NeoCodeium = {
-				static = {
-					status_icons = {
-						[0] = "󰬫 ",
-						[1] = "󰚛 ",
-						[2] = "󰓅 ",
-						[3] = "󰓅 ",
-						[4] = "󰓅 ",
-						[5] = "󰚠 ",
-						[6] = "󰚠 ",
-					},
-					server_icons = {
-						[0] = "󰖟 ",
-						[1] = "󰠕 ",
-						[2] = "󰲜 ",
-					},
-				},
-				provider = function(self)
-					local status, server = require("neocodeium").get_status()
-					return (self.status_icons[status] or "") .. (self.server_icons[server] or "")
-				end,
-				hl = { fg = colors.yellow },
-				update = {
-					"User",
-					pattern = {
-						"NeoCodeiumEnabled",
-						"NeoCodeiumDisabled",
-						"NeoCodeiumServerConnected",
-						"NeoCodeiumServerStopped",
-						"NeoCodeiumBufEnabled",
-						"NeoCodeiumBufDisabled",
-					},
-				},
-			}
-
 			-- LSP clients component
 			local LSPClients = {
 				condition = conditions.lsp_attached,
@@ -187,8 +150,6 @@ return {
 					Space,
 					Diagnostics,
 					Space,
-					NeoCodeium,
-					Space,
 					Align,
 					LSPClients,
 					{ provider = " | " },
@@ -202,12 +163,6 @@ return {
 			vim.api.nvim_create_autocmd({ "BufEnter", "User", "DiagnosticChanged", "LspAttach", "LspDetach" }, {
 				pattern = {
 					"GitSignsUpdate",
-					"NeoCodeiumEnabled",
-					"NeoCodeiumDisabled",
-					"NeoCodeiumServerConnected",
-					"NeoCodeiumServerStopped",
-					"NeoCodeiumBufEnabled",
-					"NeoCodeiumBufDisabled",
 					"DiagnosticChanged",
 					"LspAttach",
 					"LspDetach",

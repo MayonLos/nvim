@@ -9,7 +9,6 @@ return {
 	config = function()
 		local statusline = require("mini.statusline")
 		local devicons = require("nvim-web-devicons")
-		local neocodeium = require("neocodeium")
 
 		-- Mode display with Nerd Font icons
 		local function section_mode()
@@ -106,26 +105,6 @@ return {
 			return "󰒋 " .. table.concat(server_names, ", ") -- Nerd Font: lsp icon
 		end
 
-		-- Neocodeium status with connection indicators
-		local function section_neocodeium()
-			local status, server_status = neocodeium.get_status()
-			local status_icons = {
-				[0] = "󰬫 ", -- Enabled (Nerd Font: AI icon)
-				[1] = "󰚛 ", -- Disabled Globally (Nerd Font: disabled)
-				[2] = "󰓅 ", -- Disabled for Buffer (Nerd Font: buffer)
-			}
-			local server_icons = {
-				[0] = "󰖟 ", -- Connected (Nerd Font: connected)
-				[1] = "󰠕 ", -- Connecting (Nerd Font: connecting)
-				[2] = "󰲜 ", -- Disconnected (Nerd Font: disconnected)
-			}
-
-			local status_icon = status_icons[status] or ""
-			local server_icon = server_icons[server_status] or ""
-
-			return status_icon .. server_icon
-		end
-
 		-- Cursor location with percentage
 		local function section_location()
 			local line = vim.fn.line(".")
@@ -145,7 +124,6 @@ return {
 					local file_info = section_file_info()
 					local git = section_git()
 					local diag = section_diagnostics()
-					local ai = section_neocodeium()
 					local lsp = section_lsp()
 					local location = section_location()
 
@@ -155,7 +133,6 @@ return {
 						mode,
 						git ~= "" and "│ " .. git or "",
 						diag ~= "" and "│ " .. diag or "",
-						ai ~= "" and "│ " .. ai or "",
 						"%=", -- Right-align separator
 						lsp ~= "" and lsp .. " │ " or "",
 						location,
@@ -170,8 +147,6 @@ return {
 		-- Statusline redraw on relevant events
 		vim.api.nvim_create_autocmd({ "User", "DiagnosticChanged", "LspAttach", "LspDetach" }, {
 			pattern = {
-				"NeoCodeiumStatusChanged",
-				"NeoCodeiumServerStatusChanged",
 				"GitSignsUpdate",
 				"DiagnosticChanged",
 				"LspAttach",
