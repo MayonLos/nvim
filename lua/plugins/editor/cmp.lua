@@ -1,7 +1,7 @@
 return {
 	{
 		"saghen/blink.cmp",
-		event = "InsertEnter",
+		event = { "InsertEnter", "CmdlineEnter" }, -- Load on InsertEnter and CmdlineEnter for cmdline completion
 		dependencies = { "rafamadriz/friendly-snippets" },
 		build = "cargo build --release",
 		version = "1.*",
@@ -65,6 +65,7 @@ return {
 				fuzzy = { implementation = "prefer_rust_with_warning" },
 			})
 
+			-- Autocommands for Copilot integration
 			vim.api.nvim_create_autocmd("User", {
 				pattern = "BlinkCmpMenuOpen",
 				callback = function()
@@ -83,17 +84,18 @@ return {
 
 	{
 		"zbirenbaum/copilot.lua",
-		event = "InsertEnter",
+		cmd = "Copilot", -- Allow manual trigger via :Copilot
+		event = { "InsertEnter" }, -- Load on InsertEnter
 		config = function()
 			require("copilot").setup({
 				suggestion = {
 					enabled = true,
 					auto_trigger = true,
 					keymap = {
-						accept = "<Tab>",
+						accept = "<C-y>", -- Changed to avoid conflict with blink.cmp's <Tab>
 						next = "<M-]>",
 						prev = "<M-[>",
-						dismiss = "<M-Esc>",
+						dismiss = "<C-e>", -- Align with blink.cmp's hide key
 					},
 				},
 				filetypes = { ["*"] = true },
@@ -104,6 +106,7 @@ return {
 	{
 		"fang2hou/blink-copilot",
 		dependencies = { "saghen/blink.cmp", "zbirenbaum/copilot.lua" },
+		event = { "InsertEnter" }, -- Load with blink.cmp and copilot.lua
 		config = function()
 			require("blink-copilot").setup({})
 		end,
