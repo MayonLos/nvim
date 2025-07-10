@@ -1,106 +1,221 @@
 return {
-	"echasnovski/mini.statusline",
-	version = false,
-	event = "VeryLazy",
-	dependencies = { "nvim-tree/nvim-web-devicons" },
-	config = function()
-		local statusline = require("mini.statusline")
-		local devicons = require("nvim-web-devicons")
+	{
+		"rebelot/heirline.nvim",
+		event = "VeryLazy",
+		dependencies = {
+			"nvim-tree/nvim-web-devicons",
+			"neovim/nvim-lspconfig",
+			"lewis6991/gitsigns.nvim",
+			"monkoose/neocodeium",
+			"catppuccin/nvim",
+		},
+		config = function()
+			local heirline = require("heirline")
+			local conditions = require("heirline.conditions")
+			local devicons = require("nvim-web-devicons")
+			local colors = require("catppuccin.palettes").get_palette(vim.g.catppuccin_flavour or "mocha")
 
-		local function section_file_icon()
-			local filename = vim.fn.expand("%:t")
-			local ext = vim.fn.expand("%:e")
-			local icon = devicons.get_icon(filename, ext, { default = true })
-			return icon or ""
-		end
+			-- Helper components
+			local Align = { provider = "%=" }
+			local Space = { provider = " " }
 
-		local function section_mode()
-			local mode_map = {
-				n = "NORMAL",
-				i = "INSERT",
-				v = "VISUAL",
-				V = "V-LINE",
-				["\22"] = "V-BLOCK",
-				c = "COMMAND",
-				R = "REPLACE",
-				t = "TERMINAL",
+			-- Mode component
+			local Mode = {
+				provider = function()
+					local mode_map = {
+						n = " NORMAL",
+						i = " INSERT",
+						v = "󰒅 VISUAL",
+						V = "󰒅 V-LINE",
+						[""] = "󰒅 V-BLOCK",
+						c = "󰞷 COMMAND",
+						R = "󰏤 REPLACE",
+						t = "󰓫 TERM",
+						s = "󰒅 SELECT",
+						S = "󰒅 S-LINE",
+					}
+					return mode_map[vim.fn.mode()] or ("󰜅 " .. vim.fn.mode())
+				end,
+				hl = { fg = colors.blue, bold = true },
+				update = { "ModeChanged" },
 			}
-			local mode_code = vim.fn.mode()
-			local mode_text = mode_map[mode_code] or mode_code
-			return string.format(" %s", mode_text)
-		end
 
-		local function section_git()
-			return vim.b.gitsigns_head and (" " .. vim.b.gitsigns_head) or ""
-		end
-
-		local function section_diagnostics()
-			local errors = #vim.diagnostic.get(0, { severity = vim.diagnostic.severity.ERROR })
-			local warnings = #vim.diagnostic.get(0, { severity = vim.diagnostic.severity.WARN })
-			if errors == 0 and warnings == 0 then
-				return ""
-			end
-			local parts = {}
-			if errors > 0 then
-				table.insert(parts, string.format(" %d", errors))
-			end
-			if warnings > 0 then
-				table.insert(parts, string.format(" %d", warnings))
-			end
-			return table.concat(parts, " ")
-		end
-
-		local function section_lsp()
-			local clients = vim.lsp.get_clients({ bufnr = 0 })
-			if #clients == 0 then
-				return ""
-			end
-			local names = {}
-			for _, client in ipairs(clients) do
-				if client.name ~= "null-ls" then
-					table.insert(names, client.name)
-				end
-			end
-			return #names > 0 and (" " .. table.concat(names, ", ")) or ""
-		end
-
-		local function section_location()
-			return string.format(" %d:%d", vim.fn.line("."), vim.fn.virtcol("."))
-		end
-
-		statusline.setup({
-			use_icons = true,
-			set_vim_settings = false,
-			content = {
-				active = function()
-					local left_parts = {
-						section_mode(),
-						section_file_icon(),
-						section_git(),
-						section_diagnostics(),
-					}
-					local right_parts = {
-						section_lsp(),
-						section_location(),
-					}
-					local left = table.concat(
-						vim.tbl_filter(function(v)
-							return v ~= ""
-						end, left_parts),
-						" 󰇘 "
-					)
-					local right = table.concat(
-						vim.tbl_filter(function(v)
-							return v ~= ""
-						end, right_parts),
-						" 󰇘 "
-					)
-					return left .. "%=" .. right
+			-- File name component
+			local FileName = {
+				provider = function()
+					local filename = vim.fn.expand("%:t")
+					if filename == "" then
+						return "󰈔 [No Name]"
+					end
+					local icon = devicons.get_icon(filename, vim.fn.expand("%:e"), { default = true }) or "󰈔"
+					return icon .. " " .. filename .. (vim.bo.modified and " 󰜄" or "")
 				end,
-				inactive = function()
-					return section_mode()
+				hl = { fg = colors.text },
+			}
+
+			-- Git component
+			local Git = {
+				condition = conditions.is_git_repo,
+				provider = function()
+					local head = vim.b.gitsigns_head or ""
+					if head == "" then
+						return ""
+					end
+					local stats = vim.b.gitsigns_status_dict or {}
+					local parts = {}
+					if stats.added and stats.added > 0 then
+						table.insert(parts, "󰐕 " .. stats.added)
+					end
+					if stats.changed and stats.changed > 0 then
+						table.insert(parts, "󰦒 " .. stats.changed)
+					end
+					if stats.removed and stats.removed > 0 then
+						table.insert(parts, "󰍴 " .. stats.removed)
+					end
+					return "󰊢 " .. head .. (#parts > 0 and " | " .. table.concat(parts, " ") or "")
 				end,
-			},
-		})
-	end,
+				hl = { fg = colors.peach },
+				update = { "User", pattern = "GitSignsUpdate" },
+			}
+
+			-- Diagnostics component
+			local Diagnostics = {
+				condition = conditions.has_diagnostics,
+				provider = function()
+					local diags = {}
+					local icon_map = {
+						[vim.diagnostic.severity.ERROR] = "󰅚 ",
+						[vim.diagnostic.severity.WARN] = "󰀪 ",
+						[vim.diagnostic.severity.INFO] = "󰋽 ",
+						[vim.diagnostic.severity.HINT] = "󰌶 ",
+					}
+					for sev, icon in pairs(icon_map) do
+						local count = #vim.diagnostic.get(0, { severity = sev })
+						if count > 0 then
+							table.insert(diags, icon .. count)
+						end
+					end
+					return #diags > 0 and table.concat(diags, " ") or ""
+				end,
+				hl = { fg = colors.red },
+				update = { "DiagnosticChanged" },
+			}
+
+			-- NeoCodeium component
+			local NeoCodeium = {
+				static = {
+					status_icons = {
+						[0] = "󰬫 ",
+						[1] = "󰚛 ",
+						[2] = "󰓅 ",
+						[3] = "󰓅 ",
+						[4] = "󰓅 ",
+						[5] = "󰚠 ",
+						[6] = "󰚠 ",
+					},
+					server_icons = {
+						[0] = "󰖟 ",
+						[1] = "󰠕 ",
+						[2] = "󰲜 ",
+					},
+				},
+				provider = function(self)
+					local status, server = require("neocodeium").get_status()
+					return (self.status_icons[status] or "") .. (self.server_icons[server] or "")
+				end,
+				hl = { fg = colors.yellow },
+				update = {
+					"User",
+					pattern = {
+						"NeoCodeiumEnabled",
+						"NeoCodeiumDisabled",
+						"NeoCodeiumServerConnected",
+						"NeoCodeiumServerStopped",
+						"NeoCodeiumBufEnabled",
+						"NeoCodeiumBufDisabled",
+					},
+				},
+			}
+
+			-- LSP clients component
+			local LSPClients = {
+				condition = conditions.lsp_attached,
+				provider = function()
+					local clients = {}
+					for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
+						if client.name ~= "null-ls" then
+							clients[client.name] = true
+						end
+					end
+					local names = vim.tbl_keys(clients)
+					return #names > 0 and ("󰒋 " .. table.concat(names, ", ")) or ""
+				end,
+				hl = { fg = colors.mauve },
+				update = { "LspAttach", "LspDetach" },
+			}
+
+			-- Filetype and encoding component
+			local FileTypeEncoding = {
+				provider = function()
+					local ft = vim.bo.filetype
+					local enc = vim.bo.fileencoding ~= "" and vim.bo.fileencoding or "utf-8"
+					local ff = vim.bo.fileformat
+					return string.format("󰈔 %s |  %s | ↵ %s", ft, enc, ff)
+				end,
+				hl = { fg = colors.text },
+			}
+
+			-- Cursor position component
+			local Location = {
+				provider = function()
+					local line = vim.fn.line(".")
+					local col = vim.fn.virtcol(".")
+					local pct = math.floor(line / vim.fn.line("$") * 100)
+					return string.format("󰍎 %d:%-2d | %d%%", line, col, pct)
+				end,
+				hl = { fg = colors.green, italic = true },
+			}
+
+			-- Statusline setup
+			heirline.setup({
+				statusline = {
+					Mode,
+					Space,
+					FileName,
+					Space,
+					Git,
+					Space,
+					Diagnostics,
+					Space,
+					NeoCodeium,
+					Space,
+					Align,
+					LSPClients,
+					{ provider = " | " },
+					FileTypeEncoding,
+					Space,
+					Location,
+				},
+			})
+
+			-- Autocommand for statusline redraw
+			vim.api.nvim_create_autocmd({ "BufEnter", "User", "DiagnosticChanged", "LspAttach", "LspDetach" }, {
+				pattern = {
+					"GitSignsUpdate",
+					"NeoCodeiumEnabled",
+					"NeoCodeiumDisabled",
+					"NeoCodeiumServerConnected",
+					"NeoCodeiumServerStopped",
+					"NeoCodeiumBufEnabled",
+					"NeoCodeiumBufDisabled",
+					"DiagnosticChanged",
+					"LspAttach",
+					"LspDetach",
+				},
+				callback = function()
+					vim.cmd.redrawstatus()
+				end,
+			})
+		end,
+	},
 }
