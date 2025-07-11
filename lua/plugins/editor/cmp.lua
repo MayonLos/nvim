@@ -29,8 +29,7 @@ return {
 				signature = { enabled = true },
 				cmdline = {
 					completion = {
-						ghost_text = { enabled = true },
-						list = { selection = { preselect = false, auto_insert = false } },
+						list = { selection = { preselect = false, auto_insert = true } },
 					},
 					keymap = {
 						["<Tab>"] = { "show_and_insert", "select_next" },
