@@ -13,7 +13,6 @@ return {
 			},
 		},
 		keys = {
-			-- Core
 			{
 				"<leader>ff",
 				function()
@@ -49,12 +48,10 @@ return {
 				end,
 				desc = "Help Tags",
 			},
-
-			-- Extensions
 			{
 				"<leader>fu",
 				function()
-					local ok, _ = pcall(require("telescope").load_extension, "undo")
+					local ok = pcall(require("telescope").load_extension, "undo")
 					if ok then
 						require("telescope").extensions.undo.undo()
 					else
@@ -66,7 +63,7 @@ return {
 			{
 				"<leader>tm",
 				function()
-					local ok, _ = pcall(require("telescope").load_extension, "toggleterm_manager")
+					local ok = pcall(require("telescope").load_extension, "toggleterm_manager")
 					if ok then
 						require("telescope").extensions.toggleterm_manager.toggleterm_manager()
 					else
@@ -75,8 +72,6 @@ return {
 				end,
 				desc = "ToggleTerm Manager",
 			},
-
-			-- Theme Picker
 			{
 				"<leader>ft",
 				function()
@@ -94,10 +89,27 @@ return {
 				defaults = {
 					layout_strategy = "horizontal",
 					layout_config = {
-						prompt_position = "top",
-						preview_width = 0.55,
-						height = 0.9,
-						width = 0.9,
+						horizontal = {
+							prompt_position = "top",
+							preview_width = 0.55,
+							height = 0.9,
+							width = 0.9,
+						},
+						vertical = {
+							prompt_position = "top",
+							preview_height = 0.8,
+							width = 0.9,
+						},
+						center = {
+							prompt_position = "top",
+							height = 0.5,
+							width = 0.5,
+							-- NO preview_width here!
+						},
+						cursor = {
+							width = 0.4,
+							height = 0.3,
+						},
 					},
 					sorting_strategy = "ascending",
 					path_display = { "truncate" },
@@ -161,7 +173,7 @@ return {
 				end
 			end
 
-			-- ThemePicker 命令
+			-- ThemePicker command
 			local theme_file = vim.fn.stdpath("config") .. "/lua/user/last_theme.lua"
 			vim.fn.mkdir(vim.fn.fnamemodify(theme_file, ":h"), "p")
 
