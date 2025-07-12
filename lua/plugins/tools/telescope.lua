@@ -5,7 +5,6 @@ return {
 		cmd = "Telescope",
 		dependencies = {
 			"nvim-lua/plenary.nvim",
-			"nvim-telescope/telescope-ui-select.nvim",
 			"debugloop/telescope-undo.nvim",
 			{
 				"ryanmsnyder/toggleterm-manager.nvim",
@@ -83,7 +82,6 @@ return {
 
 		opts = function()
 			local actions = require("telescope.actions")
-			local dropdown = require("telescope.themes").get_dropdown
 
 			return {
 				defaults = {
@@ -104,7 +102,6 @@ return {
 							prompt_position = "top",
 							height = 0.5,
 							width = 0.5,
-							-- NO preview_width here!
 						},
 						cursor = {
 							width = 0.4,
@@ -148,7 +145,6 @@ return {
 				},
 
 				extensions = {
-					["ui-select"] = dropdown({ previewer = false, prompt_title = false }),
 					undo = {
 						use_delta = true,
 						side_by_side = true,
@@ -163,7 +159,7 @@ return {
 			local telescope = require("telescope")
 			telescope.setup(opts)
 
-			for _, ext in ipairs({ "ui-select", "undo", "toggleterm_manager" }) do
+			for _, ext in ipairs({ "undo", "toggleterm_manager" }) do
 				local ok, err = pcall(telescope.load_extension, ext)
 				if not ok then
 					vim.notify(

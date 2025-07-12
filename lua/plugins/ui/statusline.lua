@@ -1,4 +1,3 @@
--- Heirline configuration for Neovim statusline
 return {
 	{
 		"rebelot/heirline.nvim",
