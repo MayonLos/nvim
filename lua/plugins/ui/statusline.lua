@@ -1,3 +1,4 @@
+-- Heirline configuration for Neovim statusline
 return {
 	{
 		"rebelot/heirline.nvim",
@@ -9,16 +10,16 @@ return {
 			"catppuccin/nvim",
 		},
 		config = function()
-			local heirline = require("heirline")
 			local conditions = require("heirline.conditions")
+			local utils = require("heirline.utils")
 			local devicons = require("nvim-web-devicons")
 			local colors = require("catppuccin.palettes").get_palette(vim.g.catppuccin_flavour or "mocha")
 
-			-- Helper components
+			-- Utility components
 			local Align = { provider = "%=" }
 			local Space = { provider = " " }
 
-			-- Mode component
+			-- Mode component with streamlined mode mapping
 			local Mode = {
 				provider = function()
 					local mode_map = {
@@ -33,13 +34,13 @@ return {
 						s = "󰒅 SELECT",
 						S = "󰒅 S-LINE",
 					}
-					return mode_map[vim.fn.mode()] or ("󰜅 " .. vim.fn.mode())
+					return mode_map[vim.fn.mode()] or ("󰜅 " .. vim.fn.mode():upper())
 				end,
 				hl = { fg = colors.blue, bold = true },
 				update = { "ModeChanged" },
 			}
 
-			-- File name component
+			-- File name component with icon and modification indicator
 			local FileName = {
 				provider = function()
 					local filename = vim.fn.expand("%:t")
@@ -47,12 +48,12 @@ return {
 						return "󰈔 [No Name]"
 					end
 					local icon = devicons.get_icon(filename, vim.fn.expand("%:e"), { default = true }) or "󰈔"
-					return icon .. " " .. filename .. (vim.bo.modified and " 󰜄" or "")
+					return string.format("%s %s%s", icon, filename, vim.bo.modified and " 󰜄" or "")
 				end,
 				hl = { fg = colors.text },
 			}
 
-			-- Git component
+			-- Git status component
 			local Git = {
 				condition = conditions.is_git_repo,
 				provider = function()
@@ -63,35 +64,35 @@ return {
 					local stats = vim.b.gitsigns_status_dict or {}
 					local parts = {}
 					if stats.added and stats.added > 0 then
-						table.insert(parts, "󰐕 " .. stats.added)
+						parts[#parts + 1] = "󰐕 " .. stats.added
 					end
 					if stats.changed and stats.changed > 0 then
-						table.insert(parts, "󰦒 " .. stats.changed)
+						parts[#parts + 1] = "󰦒 " .. stats.changed
 					end
 					if stats.removed and stats.removed > 0 then
-						table.insert(parts, "󰍴 " .. stats.removed)
+						parts[#parts + 1] = "󰍴 " .. stats.removed
 					end
-					return "󰊢 " .. head .. (#parts > 0 and " | " .. table.concat(parts, " ") or "")
+					return string.format("󰊢 %s%s", head, #parts > 0 and " | " .. table.concat(parts, " ") or "")
 				end,
 				hl = { fg = colors.peach },
 				update = { "User", pattern = "GitSignsUpdate" },
 			}
 
-			-- Diagnostics component
+			-- Diagnostics component with severity icons
 			local Diagnostics = {
 				condition = conditions.has_diagnostics,
 				provider = function()
-					local diags = {}
 					local icon_map = {
 						[vim.diagnostic.severity.ERROR] = "󰅚 ",
 						[vim.diagnostic.severity.WARN] = "󰀪 ",
 						[vim.diagnostic.severity.INFO] = "󰋽 ",
 						[vim.diagnostic.severity.HINT] = "󰌶 ",
 					}
+					local diags = {}
 					for sev, icon in pairs(icon_map) do
 						local count = #vim.diagnostic.get(0, { severity = sev })
 						if count > 0 then
-							table.insert(diags, icon .. count)
+							diags[#diags + 1] = icon .. count
 						end
 					end
 					return #diags > 0 and table.concat(diags, " ") or ""
@@ -100,24 +101,23 @@ return {
 				update = { "DiagnosticChanged" },
 			}
 
-			-- LSP clients component
+			-- LSP clients component, filtering out null-ls
 			local LSPClients = {
 				condition = conditions.lsp_attached,
 				provider = function()
 					local clients = {}
 					for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
 						if client.name ~= "null-ls" then
-							clients[client.name] = true
+							clients[#clients + 1] = client.name
 						end
 					end
-					local names = vim.tbl_keys(clients)
-					return #names > 0 and ("󰒋 " .. table.concat(names, ", ")) or ""
+					return #clients > 0 and ("󰒋 " .. table.concat(clients, ", ")) or ""
 				end,
 				hl = { fg = colors.mauve },
 				update = { "LspAttach", "LspDetach" },
 			}
 
-			-- Filetype and encoding component
+			-- Filetype, encoding, and format component
 			local FileTypeEncoding = {
 				provider = function()
 					local ft = vim.bo.filetype
@@ -129,46 +129,74 @@ return {
 			}
 
 			-- Cursor position component
-			local Location = {
-				provider = function()
-					local line = vim.fn.line(".")
-					local col = vim.fn.virtcol(".")
-					local pct = math.floor(line / vim.fn.line("$") * 100)
-					return string.format("󰍎 %d:%-2d | %d%%", line, col, pct)
-				end,
-				hl = { fg = colors.green, italic = true },
+			local Ruler = {
+				provider = "󰍎%7(%l/%3L%):%2c %P",
+				hl = { fg = colors.text },
 			}
 
-			-- Statusline setup
-			heirline.setup({
-				statusline = {
-					Mode,
-					Space,
-					FileName,
-					Space,
-					Git,
-					Space,
-					Diagnostics,
-					Space,
-					Align,
-					LSPClients,
-					{ provider = " | " },
-					FileTypeEncoding,
-					Space,
-					Location,
+			-- Scrollbar component
+			local ScrollBar = {
+				static = {
+					sbar = { "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" },
+				},
+				provider = function(self)
+					local curr_line = vim.api.nvim_win_get_cursor(0)[1]
+					local lines = vim.api.nvim_buf_line_count(0)
+					local i = math.floor((curr_line - 1) / lines * #self.sbar) + 1
+					return string.rep(self.sbar[i], 2)
+				end,
+				hl = { fg = colors.blue },
+			}
+
+			-- Statusline definition
+			local StatusLine = {
+				hl = function()
+					return conditions.is_active() and "StatusLine" or "StatusLineNC"
+				end,
+				Mode,
+				Space,
+				FileName,
+				Space,
+				Git,
+				Space,
+				Diagnostics,
+				Space,
+				Align,
+				LSPClients,
+				{ provider = " | " },
+				FileTypeEncoding,
+				Space,
+				Ruler,
+				Space,
+				ScrollBar,
+			}
+
+			-- Setup Heirline with the defined statusline
+			require("heirline").setup({
+				statusline = StatusLine,
+				opts = {
+					colors = colors,
 				},
 			})
 
-			-- Autocommand for statusline redraw
-			vim.api.nvim_create_autocmd({ "BufEnter", "User", "DiagnosticChanged", "LspAttach", "LspDetach" }, {
-				pattern = {
-					"GitSignsUpdate",
-					"DiagnosticChanged",
-					"LspAttach",
-					"LspDetach",
-				},
-				callback = function()
+			-- Autocommand group for statusline updates
+			local group = vim.api.nvim_create_augroup("Heirline", { clear = true })
+
+			vim.api.nvim_create_autocmd({ "User", "DiagnosticChanged", "LspAttach", "LspDetach" }, {
+				pattern = { "GitSignsUpdate", "DiagnosticChanged", "LspAttach", "LspDetach" },
+				group = group,
+				callback = vim.schedule_wrap(function()
 					vim.cmd.redrawstatus()
+				end),
+			})
+
+			vim.api.nvim_create_autocmd("FileType", {
+				pattern = "*",
+				group = group,
+				callback = function()
+					if vim.tbl_contains({ "wipe", "delete" }, vim.bo.bufhidden) then
+						vim.bo.buflisted = false
+					end
 				end,
 			})
 		end,
