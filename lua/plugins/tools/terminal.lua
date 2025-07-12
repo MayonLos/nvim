@@ -1,7 +1,19 @@
 return {
 	"akinsho/toggleterm.nvim",
 	version = "*",
-	event = "VeryLazy",
+	keys = {
+		{ "<leader>tf", desc = "Terminal Float" },
+		{ "<leader>tv", desc = "Terminal Vertical" },
+		{ "<leader>tt", desc = "Terminal Split" },
+		{ "<leader>tg", desc = "Terminal Lazygit" },
+	},
+	cmd = {
+		"ToggleTerm",
+		"TermExec",
+		"ToggleTermSendCurrentLine",
+		"ToggleTermSendVisualLines",
+		"ToggleTermSendVisualSelection",
+	},
 	opts = {
 		size = 15,
 		direction = "horizontal",

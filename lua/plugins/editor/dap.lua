@@ -47,15 +47,6 @@ return {
 		},
 		dependencies = {
 			{
-				"jay-babu/mason-nvim-dap.nvim",
-				dependencies = "williamboman/mason.nvim",
-				opts = {
-					automatic_setup = true,
-					ensure_installed = { "codelldb", "debugpy" },
-					handlers = {},
-				},
-			},
-			{
 				"rcarriga/nvim-dap-ui",
 				dependencies = { "nvim-neotest/nvim-nio" },
 				opts = {

@@ -1,10 +1,15 @@
 return {
 	{
 		"stevearc/oil.nvim",
-		cmd = "Oil",
+		cmd = { "Oil" },
 		keys = {
-			{ "<leader>e", "<cmd>Oil --float<cr>", desc = "Oil (floating file explorer)" },
-			{ "-", "<cmd>Oil<cr>", desc = "Open parent directory" },
+			{ "<leader>e", "<cmd>Oil --float<CR>", desc = "Oil (floating file explorer)" },
+			{ "-", "<cmd>Oil<CR>", desc = "Open parent directory" },
+		},
+		dependencies = {
+			"nvim-tree/nvim-web-devicons",
+			"MunifTanjim/nui.nvim",
+			"JezerM/oil-lsp-diagnostics.nvim",
 		},
 		opts = {
 			default_file_explorer = true,
@@ -61,20 +66,16 @@ return {
 			watch_for_changes = false,
 			cleanup_delay_ms = 1000,
 		},
-		dependencies = {
-			"nvim-tree/nvim-web-devicons",
-			"MunifTanjim/nui.nvim",
-		},
 		config = function(_, opts)
 			require("oil").setup(opts)
+			require("oil-lsp-diagnostics").setup({
+				update_delay = 500,
+			})
 		end,
 	},
 	{
 		"JezerM/oil-lsp-diagnostics.nvim",
-		dependencies = { "stevearc/oil.nvim" },
-		event = "VeryLazy",
-		opts = {
-			update_delay = 500,
-		},
+		event = { "FileType oil" },
+		config = false,
 	},
 }

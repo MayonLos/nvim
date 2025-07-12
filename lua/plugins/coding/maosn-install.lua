@@ -2,32 +2,30 @@ return {
 	"WhoIsSethDaniel/mason-tool-installer.nvim",
 	cmd = { "MasonToolsInstall", "MasonToolsUpdate" },
 	event = "VeryLazy",
-	dependencies = {
-		"mason-org/mason.nvim",
-	},
 	opts = {
 		ensure_installed = {
-			-- ✅ LSP servers
+			-- ✅ LSP
 			"clangd",
 			"lua-language-server",
 			"pyright",
 			"bash-language-server",
 			"marksman",
-
-			-- ✅ formatters for conform.nvim
+			-- ✅ Formatters
 			"stylua",
 			"black",
 			"isort",
 			"shfmt",
 			"clang-format",
 			"prettier",
-
-			-- ✅ linters for nvim-lint
+			-- ✅ Linters
 			"luacheck",
 			"shellcheck",
 			"pylint",
 			"cpplint",
 			"markdownlint",
+			-- ✅ DAP Adapters
+			"codelldb",
+			"debugpy",
 		},
 		run_on_start = true,
 		auto_update = false,

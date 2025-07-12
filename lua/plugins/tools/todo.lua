@@ -1,6 +1,24 @@
 return {
 	"folke/todo-comments.nvim",
-	event = "VeryLazy",
+	cmd = { "TodoTelescope", "TodoTrouble" },
+	keys = {
+		{
+			"]t",
+			function()
+				require("todo-comments").jump_next()
+			end,
+			desc = "Next todo comment",
+		},
+		{
+			"[t",
+			function()
+				require("todo-comments").jump_prev()
+			end,
+			desc = "Prev todo comment",
+		},
+		{ "<leader>fd", "<cmd>TodoTelescope<CR>", desc = "Todo Telescope" },
+		{ "<leader>xd", "<cmd>TodoTrouble<CR>", desc = "Todo Trouble" },
+	},
 	dependencies = { "nvim-lua/plenary.nvim" },
 	opts = {
 		signs = true,
@@ -39,25 +57,5 @@ return {
 			},
 			pattern = [[\b(KEYWORDS):]],
 		},
-	},
-	keys = {
-		{
-			"]t",
-			function()
-				require("todo-comments").jump_next()
-			end,
-			desc = "Next todo comment",
-		},
-		{
-			"[t",
-			function()
-				require("todo-comments").jump_prev()
-			end,
-			desc = "Prev todo comment",
-		},
-
-		-- Telescope integration
-		{ "<leader>fd", "<cmd>TodoTelescope<CR>", desc = "Todo Telescope" },
-		{ "<leader>xd", "<cmd>TodoTrouble<CR>", desc = "Todo Trouble" },
 	},
 }
