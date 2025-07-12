@@ -1,74 +1,87 @@
 return {
-	"stevearc/oil.nvim",
-	cmd = "Oil",
-	keys = {
-		{ "<leader>e", "<cmd>Oil --float<cr>", desc = "Oil (floating file explorer)" },
-		{ "-", "<cmd>Oil<cr>", desc = "Open parent directory" },
-	},
-	opts = {
-		default_file_explorer = true, -- Take over directory buffers
-		delete_to_trash = true, -- Use system trash
-		skip_confirm_for_simple_edits = true,
-		view_options = {
-			show_hidden = true,
-			natural_order = true, -- Improved number sorting
-			sort = {
-				{ "type", "asc" },
-				{ "name", "asc" },
-			},
+	{
+		"stevearc/oil.nvim",
+		cmd = "Oil",
+		keys = {
+			{ "<leader>e", "<cmd>Oil --float<cr>", desc = "Oil (floating file explorer)" },
+			{ "-", "<cmd>Oil<cr>", desc = "Open parent directory" },
 		},
-		float = {
-			padding = 2,
-			max_width = 80,
-			max_height = 30,
-			border = "rounded",
+		opts = {
+			default_file_explorer = true,
+			delete_to_trash = true,
+			skip_confirm_for_simple_edits = true,
+			constrain_cursor = false,
+			view_options = {
+				show_hidden = true,
+				natural_order = "fast",
+				sort = { { "type", "asc" }, { "name", "asc" } },
+			},
+			float = {
+				padding = 2,
+				max_width = 80,
+				max_height = 30,
+				border = "rounded",
+				win_options = {
+					winblend = 10,
+					winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+				},
+				preview_split = "right",
+			},
 			win_options = {
-				winblend = 10,
-				winhighlight = "Normal:Normal,FloatBorder:FloatBorder",
+				signcolumn = "yes",
+				cursorline = false,
+				cursorcolumn = false,
 			},
-			preview_split = "right", -- Preview on right side
+			keymaps = {
+				["q"] = "actions.close",
+				["<CR>"] = "actions.select",
+				["<C-s>"] = { "actions.select", opts = { vertical = true } },
+				["<C-v>"] = { "actions.select", opts = { horizontal = true } },
+				["<C-t>"] = { "actions.select", opts = { tab = true } },
+				["<BS>"] = "actions.parent",
+				["~"] = "actions.tcd",
+				["g."] = "actions.toggle_hidden",
+				["g?"] = "actions.show_help",
+			},
+			git = {
+				add = function(path)
+					return true
+				end,
+				mv = function(src, dest)
+					return true
+				end,
+				rm = function(path)
+					return true
+				end,
+			},
+			preview_win = {
+				preview_method = "fast_scratch",
+				update_on_cursor_moved = false,
+			},
+			watch_for_changes = false,
+			cleanup_delay_ms = 1000,
 		},
-		win_options = {
-			signcolumn = "yes",
+		dependencies = {
+			"nvim-tree/nvim-web-devicons",
+			"MunifTanjim/nui.nvim",
 		},
-		keymaps = {
-			["q"] = "actions.close",
-			["<CR>"] = "actions.select",
-			["<C-s>"] = "actions.select_split",
-			["<C-v>"] = "actions.select_vsplit",
-			["<C-t>"] = "actions.select_tab",
-			["<BS>"] = "actions.parent",
-			["~"] = "actions.tcd", -- cd to home
-			["g."] = "actions.toggle_hidden", -- Toggle dotfiles
-			["g?"] = "actions.show_help",
-		},
-		-- Use git integration for better VCS handling
-		git = {
-			add = function(path)
-				return true
-			end,
-			mv = function(src, dest)
-				return true
-			end,
-			rm = function(path)
-				return true
-			end,
-		},
-		preview_win = {
-			preview_method = "fast_scratch", -- Better performance
+		config = function(_, opts)
+			require("oil").setup(opts)
+			vim.api.nvim_create_autocmd("BufEnter", {
+				pattern = "*",
+				callback = function()
+					if vim.fn.isdirectory(vim.fn.expand("%:p")) == 1 then
+						vim.cmd("Oil --float")
+					end
+				end,
+			})
+		end,
+	},
+	{
+		"JezerM/oil-lsp-diagnostics.nvim",
+		dependencies = { "stevearc/oil.nvim" },
+		opts = {
+			update_delay = 500,
 		},
 	},
-	dependencies = {
-		"nvim-tree/nvim-web-devicons",
-		"MunifTanjim/nui.nvim", -- Recommended for enhanced UI
-	},
-	init = function()
-		-- Automatically close oil when opening a file
-		vim.api.nvim_create_autocmd("FileType", {
-			pattern = "oil",
-			callback = function()
-				vim.keymap.set("n", "<Esc>", "<cmd>Oil<CR>", { buffer = true })
-			end,
-		})
-	end,
 }
