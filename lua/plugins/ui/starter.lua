@@ -1,71 +1,96 @@
 return {
 	{
-		"echasnovski/mini.starter",
-		version = false,
+		"goolord/alpha-nvim",
 		event = "VimEnter",
+		dependencies = { "nvim-tree/nvim-web-devicons" },
 		config = function()
-			local starter = require("mini.starter")
+			local alpha = require("alpha")
+			local dashboard = require("alpha.themes.dashboard")
 			local pad = string.rep(" ", 4) -- Consistent padding of 4 spaces
 
-			-- ASCII logo (font: ANSI Shadow via patorjk.com)
-			local header = table.concat({
+			-- Configuring header with ASCII art
+			dashboard.section.header.val = {
 				"███╗   ██╗███████╗ ██████╗ ██╗   ██╗██╗███╗   ███╗",
 				"████╗  ██║██╔════╝██╔═══██╗██║   ██║██║████╗ ████║",
 				"██╔██╗ ██║█████╗  ██║   ██║██║   ██║██║██╔████╔██║",
 				"██║╚██╗██║██╔══╝  ██║   ██║██║   ██║██║██║╚██╔╝██║",
 				"██║ ╚████║███████╗╚██████╔╝╚██████╔╝██║██║ ╚═╝ ██║",
 				"╚═╝  ╚═══╝╚══════╝ ╚═════╝  ╚═════╝ ╚═╝╚═╝     ╚═╝",
-			}, "\n")
+			}
+			dashboard.section.header.opts.hl = "AlphaHeader"
 
-			-- Initial starter setup
-			starter.setup({
-				evaluate_single = true,
-				header = header,
-				items = {
-					starter.sections.recent_files(5, true), -- Display up to 5 recent files
-					starter.sections.builtin_actions(), -- Include built-in actions
-				},
-				content_hooks = {
-					starter.gen_hook.adding_bullet("• ", false), -- Add right-aligned bullets
-					starter.gen_hook.aligning("center", "center"), -- Center-align content
-				},
-				footer = pad .. "Loading plugins...", -- Initial footer with padding
-			})
+			-- Configuring dashboard buttons with single-character keybindings
+			dashboard.section.buttons.val = {
+				dashboard.button("f", "󰱼  Find Files", "<cmd>lua require('telescope.builtin').find_files()<CR>"),
+				dashboard.button("g", "  Live Grep", "<cmd>lua require('telescope.builtin').live_grep()<CR>"),
+				dashboard.button("r", "  Recent Files", "<cmd>lua require('telescope.builtin').oldfiles()<CR>"),
+				dashboard.button("h", "󰋖  Help Tags", "<cmd>lua require('telescope.builtin').help_tags()<CR>"),
+				dashboard.button(
+					"c",
+					"⚙  Config Files",
+					"<cmd>lua require('telescope.builtin').find_files({ cwd = vim.fn.stdpath('config') })<CR>"
+				),
+				dashboard.button("l", "󰒋  Plugin Manager", "<cmd>Lazy<CR>"),
+				dashboard.button("n", "  New File", "<cmd>ene <BAR> startinsert<CR>"),
+				dashboard.button("q", "󰅚  Quit Neovim", "<cmd>qa<CR>"),
+			}
+			dashboard.section.buttons.opts.hl = "AlphaButtons"
+			dashboard.section.buttons.opts.hl_shortcut = "AlphaShortcut"
 
-			-- Hide statusline when MiniStarter is opened
+			-- Configuring footer with dynamic plugin statistics
+			dashboard.section.footer.val = pad .. "Loading plugins..."
+			dashboard.section.footer.opts.hl = "AlphaFooter"
+
+			-- Defining optimized layout with balanced spacing
+			dashboard.opts.layout = {
+				{ type = "padding", val = 5 }, -- Increased top padding for better balance
+				dashboard.section.header,
+				{ type = "padding", val = 3 }, -- Adjusted spacing between header and buttons
+				dashboard.section.buttons,
+				{ type = "padding", val = 2 }, -- Reduced footer padding for compactness
+				dashboard.section.footer,
+			}
+
+			-- Setting up alpha with no autocmds for cleaner startup
+			dashboard.opts.opts.noautocmd = true
+			alpha.setup(dashboard.opts)
+
+			-- Managing statusline visibility
 			vim.api.nvim_create_autocmd("User", {
-				pattern = "MiniStarterOpened",
+				pattern = "AlphaReady",
 				callback = function()
-					vim.opt.laststatus = 0
+					vim.opt.laststatus = 0 -- Hide statusline when Alpha is active
 				end,
 			})
 
-			-- Restore statusline when MiniStarter is closed
 			vim.api.nvim_create_autocmd("BufUnload", {
 				buffer = 0,
 				callback = function()
-					if vim.bo.filetype == "ministarter" then
-						vim.opt.laststatus = 2
+					if vim.bo.filetype == "alpha" then
+						vim.opt.laststatus = 2 -- Restore statusline when Alpha closes
 					end
 				end,
 			})
 
-			-- Update footer with plugin statistics on LazyVim start
+			-- Updating footer with plugin statistics on LazyVim startup
 			vim.api.nvim_create_autocmd("User", {
 				pattern = "LazyVimStarted",
 				callback = function(ev)
 					local stats = require("lazy").stats()
 					local ms = math.floor(stats.startuptime * 100 + 0.5) / 100 -- Rounded to 2 decimal places
-					starter.config.footer = pad
-						.. string.format(
-							"⚡ %d/%d plugins loaded in %.2fms",
-							stats.loaded, -- Number of loaded plugins
-							stats.count, -- Total number of plugins
-							ms
-						)
-					if vim.bo[ev.buf].filetype == "ministarter" then
-						pcall(starter.refresh) -- Safely refresh if active
+					dashboard.section.footer.val = pad
+						.. string.format("⚡ %d/%d plugins loaded in %.2fms", stats.loaded, stats.count, ms)
+					if vim.bo[ev.buf].filetype == "alpha" then
+						pcall(alpha.start, true) -- Refresh Alpha if active
 					end
+				end,
+			})
+
+			-- Disabling folding for Alpha buffer
+			vim.api.nvim_create_autocmd("FileType", {
+				pattern = "alpha",
+				callback = function()
+					vim.opt_local.nofoldenable = true
 				end,
 			})
 		end,

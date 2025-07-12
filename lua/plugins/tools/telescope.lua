@@ -6,10 +6,6 @@ return {
 		dependencies = {
 			"nvim-lua/plenary.nvim",
 			"debugloop/telescope-undo.nvim",
-			{
-				"ryanmsnyder/toggleterm-manager.nvim",
-				dependencies = "akinsho/toggleterm.nvim",
-			},
 		},
 		keys = {
 			{
@@ -58,18 +54,6 @@ return {
 					end
 				end,
 				desc = "Undo History",
-			},
-			{
-				"<leader>tm",
-				function()
-					local ok = pcall(require("telescope").load_extension, "toggleterm_manager")
-					if ok then
-						require("telescope").extensions.toggleterm_manager.toggleterm_manager()
-					else
-						vim.notify("toggleterm_manager failed to load", vim.log.levels.ERROR)
-					end
-				end,
-				desc = "ToggleTerm Manager",
 			},
 			{
 				"<leader>ft",
@@ -159,14 +143,9 @@ return {
 			local telescope = require("telescope")
 			telescope.setup(opts)
 
-			for _, ext in ipairs({ "undo", "toggleterm_manager" }) do
-				local ok, err = pcall(telescope.load_extension, ext)
-				if not ok then
-					vim.notify(
-						"Failed to load Telescope extension: " .. ext .. "\n" .. tostring(err),
-						vim.log.levels.ERROR
-					)
-				end
+			local ok, err = pcall(telescope.load_extension, "undo")
+			if not ok then
+				vim.notify("Failed to load Telescope extension: undo\n" .. tostring(err), vim.log.levels.ERROR)
 			end
 
 			-- ThemePicker command
