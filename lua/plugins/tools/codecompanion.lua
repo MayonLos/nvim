@@ -14,7 +14,6 @@ return {
 		dependencies = {
 			"nvim-lua/plenary.nvim",
 			"nvim-treesitter/nvim-treesitter",
-			"ravitemer/mcphub.nvim",
 			"MeanderingProgrammer/render-markdown.nvim",
 			{
 				"sindrets/diffview.nvim",
@@ -45,16 +44,6 @@ return {
 					chat = { adapter = "deepseek" },
 					inline = { adapter = "copilot" },
 					cmd = { adapter = "deepseek" },
-				},
-				extensions = {
-					mcphub = {
-						callback = "mcphub.extensions.codecompanion",
-						opts = {
-							make_vars = true,
-							make_slash_commands = true,
-							show_result_in_chat = true,
-						},
-					},
 				},
 			})
 		end,
