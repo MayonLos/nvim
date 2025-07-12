@@ -67,19 +67,12 @@ return {
 		},
 		config = function(_, opts)
 			require("oil").setup(opts)
-			vim.api.nvim_create_autocmd("BufEnter", {
-				pattern = "*",
-				callback = function()
-					if vim.fn.isdirectory(vim.fn.expand("%:p")) == 1 then
-						vim.cmd("Oil --float")
-					end
-				end,
-			})
 		end,
 	},
 	{
 		"JezerM/oil-lsp-diagnostics.nvim",
 		dependencies = { "stevearc/oil.nvim" },
+		event = "VeryLazy",
 		opts = {
 			update_delay = 500,
 		},
