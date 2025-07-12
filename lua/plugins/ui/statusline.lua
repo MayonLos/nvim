@@ -1,8 +1,7 @@
 return {
 	{
 		"rebelot/heirline.nvim",
-
-		event = { "BufReadPost", "BufNewFile" },
+		event = "VeryLazy",
 		dependencies = {
 			"nvim-tree/nvim-web-devicons",
 			"neovim/nvim-lspconfig",

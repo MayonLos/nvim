@@ -5,8 +5,9 @@ return {
 		event = "VimEnter",
 		config = function()
 			local starter = require("mini.starter")
+			local pad = string.rep(" ", 4) -- Unified padding
 
-			-- ASCII logo (font: ANSI Shadow via patorjk.com)
+			-- Original ASCII art header
 			local header = table.concat({
 				"███╗   ██╗███████╗ ██████╗ ██╗   ██╗██╗███╗   ███╗",
 				"████╗  ██║██╔════╝██╔═══██╗██║   ██║██║████╗ ████║",
@@ -15,55 +16,32 @@ return {
 				"██║ ╚████║███████╗╚██████╔╝╚██████╔╝██║██║ ╚═╝ ██║",
 				"╚═╝  ╚═══╝╚══════╝ ╚═════╝  ╚═════╝ ╚═╝╚═╝     ╚═╝",
 			}, "\n")
-
 			starter.setup({
-				evaluate_single = true,
+				evaluate_single = false,
 				header = header,
-
+				query_updaters = "",
 				items = {
 					starter.sections.recent_files(5, true),
 					starter.sections.builtin_actions(),
 				},
-
 				content_hooks = {
-					starter.gen_hook.adding_bullet("→ ", false),
+					starter.gen_hook.adding_bullet("• ", true),
 					starter.gen_hook.aligning("center", "center"),
+					starter.gen_hook.padding(3, 2),
 				},
-
-				footer = "Loading plugins...",
+				footer = "",
+				silent = true,
 			})
 
-			-- Hide statusline in starter
-			vim.api.nvim_create_autocmd("User", {
-				pattern = "MiniStarterOpened",
-				callback = function()
-					vim.opt.laststatus = 0
-				end,
-			})
-
-			-- Restore statusline after starter
-			vim.api.nvim_create_autocmd("BufUnload", {
-				buffer = 0,
-				callback = function()
-					if vim.bo.filetype == "ministarter" then
-						vim.opt.laststatus = 2
-					end
-				end,
-			})
-
-			-- Update footer with plugin stats
-			vim.api.nvim_create_autocmd("User", {
-				pattern = "LazyVimStarted",
-				callback = function(ev)
-					local stats = require("lazy").stats()
-					local ms = (math.floor(stats.startuptime * 100 + 0.5) / 100)
-					starter.config.footer =
-						string.format("⚡ %d/%d plugins loaded in %.2fms", stats.loaded, stats.count, ms)
-					if vim.bo[ev.buf].filetype == "ministarter" then
-						pcall(starter.refresh)
-					end
-				end,
-			})
+			-- Delayed statistics loading
+			vim.defer_fn(function()
+				local stats = require("lazy").stats()
+				local ms = (math.floor(stats.startuptime * 100 + 0.5) / 100)
+				starter.config.footer = pad .. string.format("⚡ %d plugins loaded in %.2fms", stats.count, ms)
+				if vim.bo.filetype == "ministarter" then
+					starter.refresh()
+				end
+			end, 50)
 		end,
 	},
 }
