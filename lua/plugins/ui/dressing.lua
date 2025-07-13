@@ -16,7 +16,6 @@ return {
 					},
 				},
 				get_config = function(opts)
-					-- 动态提示符定制
 					local prompt = opts.prompt or ""
 					if prompt:find("Mason") then
 						opts.default_prompt = " Mason ➤ "
@@ -58,7 +57,6 @@ return {
 						},
 					},
 					border = "rounded",
-					-- 添加浮动窗口动画
 					winblend = 10,
 					animate = {
 						open = { "slide", { distance = 5 } },
@@ -66,7 +64,6 @@ return {
 				},
 
 				get_config = function(opts)
-					-- 动态标题定制
 					if opts.kind == "mason.nvim" then
 						opts.title = " Mason Packages"
 					elseif opts.kind == "dap" then
@@ -81,8 +78,6 @@ return {
 
 		config = function(_, opts)
 			require("dressing").setup(opts)
-
-			-- 安全应用主题颜色（仅当主题存在时）
 			local ok, _ = pcall(vim.api.nvim_get_hl_by_name, "CatppuccinMauve", false)
 			if ok then
 				vim.api.nvim_set_hl(0, "FloatBorder", { link = "CatppuccinMauve" })

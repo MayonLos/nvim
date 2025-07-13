@@ -5,6 +5,11 @@ return {
 		cmd = "Telescope",
 		dependencies = {
 			"nvim-lua/plenary.nvim",
+			{
+				"nvim-telescope/telescope-fzf-native.nvim",
+				build = "make",
+				cond = vim.fn.executable("make") == 1,
+			},
 		},
 		keys = {
 			{
@@ -49,8 +54,15 @@ return {
 				end,
 				desc = "Theme Picker",
 			},
-		},
 
+			{
+				"<leader>fr",
+				function()
+					require("telescope.builtin").resume()
+				end,
+				desc = "Resume Last Telescope",
+			},
+		},
 		opts = function()
 			local actions = require("telescope.actions")
 
@@ -85,8 +97,8 @@ return {
 
 					mappings = {
 						i = {
-							["<C-j>"] = "move_selection_next",
-							["<C-k>"] = "move_selection_previous",
+							["<C-j>"] = actions.move_selection_next,
+							["<C-k>"] = actions.move_selection_previous,
 							["<C-y>"] = function(prompt_bufnr)
 								local entry = require("telescope.actions.state").get_selected_entry()
 								if entry then
@@ -98,7 +110,6 @@ return {
 						},
 					},
 				},
-
 				pickers = {
 					find_files = {
 						hidden = true,
@@ -116,12 +127,12 @@ return {
 				},
 			}
 		end,
-
 		config = function(_, opts)
 			local telescope = require("telescope")
 			telescope.setup(opts)
 
-			-- ThemePicker command
+			pcall(telescope.load_extension, "fzf")
+
 			local theme_file = vim.fn.stdpath("config") .. "/lua/user/last_theme.lua"
 			vim.fn.mkdir(vim.fn.fnamemodify(theme_file, ":h"), "p")
 
