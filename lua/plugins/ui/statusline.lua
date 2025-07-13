@@ -10,17 +10,18 @@ return {
 		},
 		config = function()
 			local conditions = require("heirline.conditions")
+			local utils = require("heirline.utils")
 			local devicons = require("nvim-web-devicons")
-			local palette = require("catppuccin.palettes").get_palette(vim.g.catppuccin_flavour or "mocha")
+			local colors = require("catppuccin.palettes").get_palette(vim.g.catppuccin_flavour or "mocha")
 
-			-- Helpers
+			-- Utility components
 			local Align = { provider = "%=" }
 			local Space = { provider = " " }
 
-			-- Mode indicator
+			-- Mode component with streamlined mode mapping
 			local Mode = {
 				provider = function()
-					local modes = {
+					local mode_map = {
 						n = " NORMAL",
 						i = " INSERT",
 						v = "󰒅 VISUAL",
@@ -29,132 +30,173 @@ return {
 						c = "󰞷 COMMAND",
 						R = "󰏤 REPLACE",
 						t = "󰓫 TERM",
+						s = "󰒅 SELECT",
+						S = "󰒅 S-LINE",
 					}
-					return modes[vim.fn.mode()] or vim.fn.mode():upper()
+					return mode_map[vim.fn.mode()] or ("󰜅 " .. vim.fn.mode():upper())
 				end,
-				hl = { fg = palette.blue, bold = true },
+				hl = { fg = colors.blue, bold = true },
 				update = { "ModeChanged" },
 			}
 
-			-- File info
+			-- File name component with icon and modification indicator
 			local FileName = {
 				provider = function()
-					local name = vim.fn.expand("%:t")
-					if name == "" then
-						return "[No Name]"
+					local filename = vim.fn.expand("%:t")
+					if filename == "" then
+						return "󰈔 [No Name]"
 					end
-					local icon = devicons.get_icon(name, vim.fn.expand("%:e"), { default = true })
-					return (icon or "󰈔") .. " " .. name .. (vim.bo.modified and " ●" or "")
+					local icon = devicons.get_icon(filename, vim.fn.expand("%:e"), { default = true }) or "󰈔"
+					return string.format("%s %s%s", icon, filename, vim.bo.modified and " 󰜄" or "")
 				end,
-				hl = { fg = palette.text },
+				hl = { fg = colors.text },
 			}
 
-			-- Git status
+			-- Git status component
 			local Git = {
 				condition = conditions.is_git_repo,
 				provider = function()
-					local s = vim.b.gitsigns_status_dict or {}
+					local head = vim.b.gitsigns_head or ""
+					if head == "" then
+						return ""
+					end
+					local stats = vim.b.gitsigns_status_dict or {}
 					local parts = {}
-					if s.head then
-						table.insert(parts, " " .. s.head)
+					if stats.added and stats.added > 0 then
+						parts[#parts + 1] = "󰐕 " .. stats.added
 					end
-					if s.added and s.added > 0 then
-						table.insert(parts, "+" .. s.added)
+					if stats.changed and stats.changed > 0 then
+						parts[#parts + 1] = "󰦒 " .. stats.changed
 					end
-					if s.changed and s.changed > 0 then
-						table.insert(parts, "~" .. s.changed)
+					if stats.removed and stats.removed > 0 then
+						parts[#parts + 1] = "󰍴 " .. stats.removed
 					end
-					if s.removed and s.removed > 0 then
-						table.insert(parts, "-" .. s.removed)
-					end
-					return table.concat(parts, " ")
+					return string.format("󰊢 %s%s", head, #parts > 0 and " | " .. table.concat(parts, " ") or "")
 				end,
-				hl = { fg = palette.peach },
+				hl = { fg = colors.peach },
+				update = { "User", pattern = "GitSignsUpdate" },
 			}
 
-			-- Diagnostics
+			-- Diagnostics component with severity icons
 			local Diagnostics = {
 				condition = conditions.has_diagnostics,
 				provider = function()
-					local icons = { E = "󰅚", W = "󰀪", I = "󰋽", H = "󰌶" }
-					local msgs = {}
-					for key, icon in pairs(icons) do
-						local count = #vim.diagnostic.get(0, { severity = vim.diagnostic.severity[key] })
+					local icon_map = {
+						[vim.diagnostic.severity.ERROR] = "󰅚 ",
+						[vim.diagnostic.severity.WARN] = "󰀪 ",
+						[vim.diagnostic.severity.INFO] = "󰋽 ",
+						[vim.diagnostic.severity.HINT] = "󰌶 ",
+					}
+					local diags = {}
+					for sev, icon in pairs(icon_map) do
+						local count = #vim.diagnostic.get(0, { severity = sev })
 						if count > 0 then
-							table.insert(msgs, icon .. count)
+							diags[#diags + 1] = icon .. count
 						end
 					end
-					return table.concat(msgs, " ")
+					return #diags > 0 and table.concat(diags, " ") or ""
 				end,
-				hl = { fg = palette.red },
+				hl = { fg = colors.red },
 				update = { "DiagnosticChanged" },
 			}
 
-			-- LSP clients
+			-- LSP clients component, filtering out null-ls
 			local LSPClients = {
 				condition = conditions.lsp_attached,
 				provider = function()
-					local clients = vim.lsp.get_clients({ bufnr = 0 })
-					local names = vim.tbl_map(
-						function(c)
-							return c.name
-						end,
-						vim.tbl_filter(function(c)
-							return c.name ~= "null-ls"
-						end, clients)
-					)
-					return #names > 0 and " " .. table.concat(names, ", ") or ""
+					local clients = {}
+					for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
+						if client.name ~= "null-ls" then
+							clients[#clients + 1] = client.name
+						end
+					end
+					return #clients > 0 and ("󰒋 " .. table.concat(clients, ", ")) or ""
 				end,
-				hl = { fg = palette.mauve },
+				hl = { fg = colors.mauve },
 				update = { "LspAttach", "LspDetach" },
 			}
 
-			-- File type / encoding / format
-			local FileInfo = {
+			-- Filetype, encoding, and format component
+			local FileTypeEncoding = {
 				provider = function()
-					return table.concat(
-						{ vim.bo.filetype or "noft", vim.bo.fileencoding or "utf-8", vim.bo.fileformat },
-						"|"
-					)
+					local ft = vim.bo.filetype
+					local enc = vim.bo.fileencoding ~= "" and vim.bo.fileencoding or "utf-8"
+					local ff = vim.bo.fileformat
+					return string.format("󰈔 %s |  %s | ↵ %s", ft, enc, ff)
 				end,
-				hl = { fg = palette.text },
+				hl = { fg = colors.text },
 			}
 
-			-- Ruler
-			local Ruler = { provider = "%l/%L:%c", hl = { fg = palette.text } }
+			-- Cursor position component
+			local Ruler = {
+				provider = "󰍎%7(%l/%3L%):%2c %P",
+				hl = { fg = colors.text },
+			}
 
-			-- Scrollbar
+			-- Scrollbar component
 			local ScrollBar = {
-				static = { sbar = { "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" } },
+				static = {
+					sbar = { "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" },
+				},
 				provider = function(self)
-					local line = vim.api.nvim_win_get_cursor(0)[1]
-					local total = vim.api.nvim_buf_line_count(0)
-					local idx = math.floor((line - 1) / total * #self.sbar) + 1
-					return string.rep(self.sbar[idx], 2)
+					local curr_line = vim.api.nvim_win_get_cursor(0)[1]
+					local lines = vim.api.nvim_buf_line_count(0)
+					local i = math.floor((curr_line - 1) / lines * #self.sbar) + 1
+					return string.rep(self.sbar[i], 2)
 				end,
-				hl = { fg = palette.blue },
+				hl = { fg = colors.blue },
 			}
 
-			-- Build statusline
+			-- Statusline definition
+			local StatusLine = {
+				hl = function()
+					return conditions.is_active() and "StatusLine" or "StatusLineNC"
+				end,
+				Mode,
+				Space,
+				FileName,
+				Space,
+				Git,
+				Space,
+				Diagnostics,
+				Space,
+				Align,
+				LSPClients,
+				{ provider = " | " },
+				FileTypeEncoding,
+				Space,
+				Ruler,
+				Space,
+				ScrollBar,
+			}
+
+			-- Setup Heirline with the defined statusline
 			require("heirline").setup({
-				statusline = {
-					Mode,
-					Space,
-					FileName,
-					Space,
-					Git,
-					Space,
-					Diagnostics,
-					Align,
-					LSPClients,
-					Space,
-					FileInfo,
-					Space,
-					Ruler,
-					Space,
-					ScrollBar,
+				statusline = StatusLine,
+				opts = {
+					colors = colors,
 				},
-				opts = { colors = palette },
+			})
+
+			-- Autocommand group for statusline updates
+			local group = vim.api.nvim_create_augroup("Heirline", { clear = true })
+
+			vim.api.nvim_create_autocmd({ "User", "DiagnosticChanged", "LspAttach", "LspDetach" }, {
+				pattern = { "GitSignsUpdate", "DiagnosticChanged", "LspAttach", "LspDetach" },
+				group = group,
+				callback = vim.schedule_wrap(function()
+					vim.cmd.redrawstatus()
+				end),
+			})
+
+			vim.api.nvim_create_autocmd("FileType", {
+				pattern = "*",
+				group = group,
+				callback = function()
+					if vim.tbl_contains({ "wipe", "delete" }, vim.bo.bufhidden) then
+						vim.bo.buflisted = false
+					end
+				end,
 			})
 		end,
 	},
