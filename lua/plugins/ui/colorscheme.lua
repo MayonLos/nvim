@@ -6,6 +6,7 @@ return {
 		config = function()
 			require("catppuccin").setup({
 				integrations = {
+					barbar = true,
 					diffview = true,
 					gitsigns = true,
 					mason = true,

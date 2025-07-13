@@ -5,7 +5,6 @@ return {
 		cmd = "Telescope",
 		dependencies = {
 			"nvim-lua/plenary.nvim",
-			"debugloop/telescope-undo.nvim",
 		},
 		keys = {
 			{
@@ -42,18 +41,6 @@ return {
 					require("telescope.builtin").help_tags()
 				end,
 				desc = "Help Tags",
-			},
-			{
-				"<leader>fu",
-				function()
-					local ok = pcall(require("telescope").load_extension, "undo")
-					if ok then
-						require("telescope").extensions.undo.undo()
-					else
-						vim.notify("telescope-undo failed to load", vim.log.levels.ERROR)
-					end
-				end,
-				desc = "Undo History",
 			},
 			{
 				"<leader>ft",
@@ -127,26 +114,12 @@ return {
 						show_all_buffers = true,
 					},
 				},
-
-				extensions = {
-					undo = {
-						use_delta = true,
-						side_by_side = true,
-						vim_diff_opts = { ctxlen = vim.o.scrolloff },
-						entry_format = "state #$ID, $STAT, $TIME",
-					},
-				},
 			}
 		end,
 
 		config = function(_, opts)
 			local telescope = require("telescope")
 			telescope.setup(opts)
-
-			local ok, err = pcall(telescope.load_extension, "undo")
-			if not ok then
-				vim.notify("Failed to load Telescope extension: undo\n" .. tostring(err), vim.log.levels.ERROR)
-			end
 
 			-- ThemePicker command
 			local theme_file = vim.fn.stdpath("config") .. "/lua/user/last_theme.lua"

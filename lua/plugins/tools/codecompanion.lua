@@ -15,15 +15,7 @@ return {
 			"nvim-lua/plenary.nvim",
 			"nvim-treesitter/nvim-treesitter",
 			"MeanderingProgrammer/render-markdown.nvim",
-			{
-				"sindrets/diffview.nvim",
-				config = function()
-					require("diffview").setup({
-						enhanced_diff_hl = true,
-						use_icons = true,
-					})
-				end,
-			},
+			"sindrets/diffview.nvim",
 		},
 		config = function()
 			local adapters = require("codecompanion.adapters")
