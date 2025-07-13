@@ -18,7 +18,7 @@ return {
 			local Align = { provider = "%=" }
 			local Space = { provider = " " }
 
-			-- Mode component with streamlined mode mapping
+			-- Mode component
 			local Mode = {
 				provider = function()
 					local mode_map = {
@@ -26,7 +26,7 @@ return {
 						i = " INSERT",
 						v = "󰒅 VISUAL",
 						V = "󰒅 V-LINE",
-						[""] = "󰒅 V-BLOCK",
+						["\22"] = "󰒅 V-BLOCK",
 						c = "󰞷 COMMAND",
 						R = "󰏤 REPLACE",
 						t = "󰓫 TERM",
@@ -39,7 +39,7 @@ return {
 				update = { "ModeChanged" },
 			}
 
-			-- File name component with icon and modification indicator
+			-- File name component
 			local FileName = {
 				provider = function()
 					local filename = vim.fn.expand("%:t")
@@ -77,7 +77,7 @@ return {
 				update = { "User", pattern = "GitSignsUpdate" },
 			}
 
-			-- Diagnostics component with severity icons
+			-- Diagnostics component
 			local Diagnostics = {
 				condition = conditions.has_diagnostics,
 				provider = function()
@@ -100,7 +100,7 @@ return {
 				update = { "DiagnosticChanged" },
 			}
 
-			-- LSP clients component, filtering out null-ls
+			-- LSP clients component
 			local LSPClients = {
 				condition = conditions.lsp_attached,
 				provider = function()
@@ -170,25 +170,13 @@ return {
 				ScrollBar,
 			}
 
-			-- Setup Heirline with the defined statusline
+			-- Setup Heirline
 			require("heirline").setup({
 				statusline = StatusLine,
-				opts = {
-					colors = colors,
-				},
 			})
 
-			-- Autocommand group for statusline updates
+			-- Autocommand for buffer listing
 			local group = vim.api.nvim_create_augroup("Heirline", { clear = true })
-
-			vim.api.nvim_create_autocmd({ "User", "DiagnosticChanged", "LspAttach", "LspDetach" }, {
-				pattern = { "GitSignsUpdate", "DiagnosticChanged", "LspAttach", "LspDetach" },
-				group = group,
-				callback = vim.schedule_wrap(function()
-					vim.cmd.redrawstatus()
-				end),
-			})
-
 			vim.api.nvim_create_autocmd("FileType", {
 				pattern = "*",
 				group = group,
