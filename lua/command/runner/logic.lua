@@ -1,6 +1,6 @@
 local utils = require("utils.filepath")
-local runners = require("runner.runners").runners
-local ui = require("runner.ui")
+local runners = require("command.runner.runners").runners
+local ui = require("command.runner.ui")
 
 local M = {}
 
@@ -14,7 +14,7 @@ end
 
 function M.compile_and_run()
 	if vim.bo.modified then
-		pcall(vim.cmd.write)
+		vim.cmd.write()
 	end
 
 	local file = utils.get_file_info()
@@ -35,11 +35,12 @@ function M.compile_and_run()
 
 	if runner.run then
 		local run_cmd = type(runner.run) == "function" and runner.run(file) or runner.run
-		cmd_parts[#cmd_parts + 1] = "&&"
-		cmd_parts[#cmd_parts + 1] = run_cmd
+		table.insert(cmd_parts, "&&")
+		table.insert(cmd_parts, run_cmd)
 	end
 
-	ui.open_floating_terminal(table.concat(cmd_parts, " "))
+	local final_cmd = table.concat(cmd_parts, " ")
+	ui.open_floating_terminal(final_cmd)
 end
 
 return M

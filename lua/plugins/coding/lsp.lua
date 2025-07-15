@@ -11,7 +11,20 @@ return {
 		opts = {
 			servers = {
 				bashls = {},
-				clangd = {},
+				clangd = {
+					capabilities = {
+						inlayHint = { enable = true },
+					},
+					settings = {
+						clangd = {
+							InlayHints = {
+								Enabled = true,
+								ParameterNames = true,
+								DeducedTypes = true,
+							},
+						},
+					},
+				},
 				pyright = {},
 				marksman = {},
 				lua_ls = {},
@@ -25,7 +38,11 @@ return {
 				require("utils.icons").apply_diagnostic_signs()
 			end
 
-			local on_attach = function(_, bufnr)
+			local on_attach = function(client, bufnr)
+				if client.server_capabilities.inlayHintProvider then
+					vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
+				end
+
 				local map = function(lhs, rhs, desc)
 					vim.keymap.set("n", "<leader>l" .. lhs, rhs, {
 						buffer = bufnr,
@@ -40,11 +57,19 @@ return {
 				map("r", vim.lsp.buf.rename, "Rename")
 				map("a", vim.lsp.buf.code_action, "Code Action")
 				map("R", vim.lsp.buf.references, "References")
+
+				map("I", function()
+					local enabled = vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr })
+					vim.lsp.inlay_hint.enable(not enabled, { bufnr = bufnr })
+				end, "Toggle Inlay Hints")
 			end
 
-			local lspconfig = require("lspconfig")
-			local capabilities = require("blink.cmp").get_lsp_capabilities()
+			local capabilities =
+				vim.tbl_deep_extend("force", require("blink.cmp").get_lsp_capabilities(), {
+					inlayHint = { enable = true },
+				})
 
+			local lspconfig = require("lspconfig")
 			for name, config in pairs(opts.servers) do
 				lspconfig[name].setup(vim.tbl_deep_extend("force", {
 					capabilities = capabilities,

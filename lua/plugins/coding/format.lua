@@ -23,13 +23,10 @@ return {
 			desc = "Format Injected Langs",
 		},
 	},
-	dependencies = {
-		"mason-org/mason.nvim",
-	},
+	dependencies = { "mason-org/mason.nvim" },
 
 	config = function()
 		local conform = require("conform")
-
 		vim.g.autoformat_enabled = true
 
 		conform.setup({
@@ -43,17 +40,33 @@ return {
 				python = { "isort", "black" },
 				sh = { "shfmt" },
 				markdown = { "prettier" },
+				json = { "prettier" },
+				yaml = { "prettier" },
+				html = { "prettier" },
+				css = { "prettier" },
+				javascript = { "prettier" },
+				typescript = { "prettier" },
 				c = { "clang_format" },
 				cpp = { "clang_format" },
 				["*"] = { "trim_whitespace" },
 			},
 
 			formatters = {
+				stylua = {
+					prepend_args = { "--indent-width", "2", "--column-width", "100" },
+				},
 				shfmt = {
 					prepend_args = { "-i", "2", "-ci" },
 				},
 				clang_format = {
-					args = { "--style=file", "-assume-filename", "$FILENAME" },
+					prepend_args = {
+						"--style={BasedOnStyle: LLVM, IndentWidth: 4, TabWidth: 4}",
+						"-assume-filename",
+						"$FILENAME",
+					},
+				},
+				prettier = {
+					prepend_args = { "--tab-width", "2", "--print-width", "100" },
 				},
 				injected = {
 					options = { ignore_errors = true },
