@@ -27,12 +27,10 @@ return {
 					return opts
 				end,
 			},
-
 			select = {
 				enabled = true,
 				backend = { "telescope", "builtin" },
 				trim_prompt = true,
-
 				telescope = {
 					theme = "dropdown",
 					layout_config = {
@@ -44,7 +42,6 @@ return {
 						end,
 					},
 				},
-
 				builtin = {
 					win_options = {
 						winblend = 10,
@@ -57,12 +54,10 @@ return {
 						},
 					},
 					border = "rounded",
-					winblend = 10,
 					animate = {
 						open = { "slide", { distance = 5 } },
 					},
 				},
-
 				get_config = function(opts)
 					if opts.kind == "mason.nvim" then
 						opts.title = " Mason Packages"
@@ -70,12 +65,13 @@ return {
 						opts.title = " DAP Configurations"
 					elseif opts.kind == "overseer" then
 						opts.title = " Overseer Tasks"
+					elseif opts.kind == "code_action" then
+						opts.title = " Code Actions"
 					end
 					return opts
 				end,
 			},
 		},
-
 		config = function(_, opts)
 			require("dressing").setup(opts)
 			local ok, _ = pcall(vim.api.nvim_get_hl_by_name, "CatppuccinMauve", false)
@@ -86,6 +82,8 @@ return {
 					fg = vim.api.nvim_get_hl_by_name("CatppuccinBlue", true).foreground,
 					bold = true,
 				})
+				vim.api.nvim_set_hl(0, "LspSagaNormal", { link = "NormalFloat" })
+				vim.api.nvim_set_hl(0, "LspSagaBorder", { link = "FloatBorder" })
 			end
 		end,
 	},

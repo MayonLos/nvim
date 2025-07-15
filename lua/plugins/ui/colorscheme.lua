@@ -44,13 +44,15 @@ return {
 						-- style = "nvchad"
 					},
 					lsp_trouble = true,
+					lsp_saga = true,
 					which_key = true,
 					rainbow_delimiters = true,
 				},
 			})
 			local theme_file = vim.fn.stdpath("config") .. "/lua/user/last_theme.lua"
 			local ok, saved = pcall(dofile, theme_file)
-			local colorscheme = ok and type(saved) == "string" and #saved > 0 and saved or "catppuccin-frappe"
+			local colorscheme = ok and type(saved) == "string" and #saved > 0 and saved
+				or "catppuccin-frappe"
 			vim.schedule(function()
 				pcall(vim.cmd.colorscheme, colorscheme)
 			end)

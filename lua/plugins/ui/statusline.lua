@@ -10,15 +10,12 @@ return {
 		},
 		config = function()
 			local conditions = require("heirline.conditions")
-			local utils = require("heirline.utils")
 			local devicons = require("nvim-web-devicons")
 			local colors = require("catppuccin.palettes").get_palette(vim.g.catppuccin_flavour or "mocha")
 
-			-- Utility components
 			local Align = { provider = "%=" }
 			local Space = { provider = " " }
 
-			-- Mode component
 			local Mode = {
 				provider = function()
 					local mode_map = {
@@ -39,101 +36,168 @@ return {
 				update = { "ModeChanged" },
 			}
 
-			-- File name component
 			local FileName = {
 				provider = function()
 					local filename = vim.fn.expand("%:t")
 					if filename == "" then
 						return "󰈔 [No Name]"
 					end
-					local icon = devicons.get_icon(filename, vim.fn.expand("%:e"), { default = true }) or "󰈔"
+					local icon = devicons.get_icon(filename, vim.fn.expand("%:e"), { default = true })
+						or "󰈔"
 					return string.format("%s %s%s", icon, filename, vim.bo.modified and " 󰜄" or "")
 				end,
 				hl = { fg = colors.text },
 			}
 
-			-- Git status component
 			local Git = {
 				condition = conditions.is_git_repo,
-				provider = function()
-					local head = vim.b.gitsigns_head or ""
-					if head == "" then
+				init = function(self)
+					self.head = vim.b.gitsigns_head or ""
+					local stats = vim.b.gitsigns_status_dict or {}
+					self.added = stats.added or 0
+					self.changed = stats.changed or 0
+					self.removed = stats.removed or 0
+				end,
+				provider = function(self)
+					if self.head == "" then
 						return ""
 					end
-					local stats = vim.b.gitsigns_status_dict or {}
+
 					local parts = {}
-					if stats.added and stats.added > 0 then
-						parts[#parts + 1] = "󰐕 " .. stats.added
+
+					if self.added > 0 then
+						table.insert(parts, "%#" .. "GitAdded" .. "# " .. self.added .. "%*")
 					end
-					if stats.changed and stats.changed > 0 then
-						parts[#parts + 1] = "󰦒 " .. stats.changed
+
+					if self.changed > 0 then
+						table.insert(parts, "%#" .. "GitChanged" .. "# " .. self.changed .. "%*")
 					end
-					if stats.removed and stats.removed > 0 then
-						parts[#parts + 1] = "󰍴 " .. stats.removed
+
+					if self.removed > 0 then
+						table.insert(parts, "%#" .. "GitRemoved" .. "# " .. self.removed .. "%*")
 					end
-					return string.format("󰊢 %s%s", head, #parts > 0 and " | " .. table.concat(parts, " ") or "")
+
+					local stats_str = ""
+					if #parts > 0 then
+						stats_str = " | " .. table.concat(parts, " ")
+					end
+
+					return string.format(" %s%s", self.head, stats_str)
 				end,
-				hl = { fg = colors.peach },
+				hl = { fg = colors.peach, bold = true },
 				update = { "User", pattern = "GitSignsUpdate" },
 			}
-
-			-- Diagnostics component
 			local Diagnostics = {
 				condition = conditions.has_diagnostics,
-				provider = function()
-					local icon_map = {
-						[vim.diagnostic.severity.ERROR] = "󰅚 ",
-						[vim.diagnostic.severity.WARN] = "󰀪 ",
-						[vim.diagnostic.severity.INFO] = "󰋽 ",
-						[vim.diagnostic.severity.HINT] = "󰌶 ",
-					}
-					local diags = {}
-					for sev, icon in pairs(icon_map) do
-						local count = #vim.diagnostic.get(0, { severity = sev })
-						if count > 0 then
-							diags[#diags + 1] = icon .. count
-						end
-					end
-					return #diags > 0 and table.concat(diags, " ") or ""
+				init = function(self)
+					self.errors = #vim.diagnostic.get(0, { severity = vim.diagnostic.severity.ERROR })
+					self.warnings = #vim.diagnostic.get(0, { severity = vim.diagnostic.severity.WARN })
+					self.infos = #vim.diagnostic.get(0, { severity = vim.diagnostic.severity.INFO })
+					self.hints = #vim.diagnostic.get(0, { severity = vim.diagnostic.severity.HINT })
 				end,
-				hl = { fg = colors.red },
-				update = { "DiagnosticChanged" },
+				static = {
+					icons = {
+						error = "󰅚 ",
+						warn = "󰀪 ",
+						info = "󰋽 ",
+						hint = "󰌶 ",
+					},
+				},
+				update = { "DiagnosticChanged", "BufEnter" },
+				{
+					provider = function(self)
+						return self.errors > 0 and (self.icons.error .. self.errors .. " ") or ""
+					end,
+					hl = { fg = colors.red },
+				},
+				{
+					provider = function(self)
+						return self.warnings > 0 and (self.icons.warn .. self.warnings .. " ") or ""
+					end,
+					hl = { fg = colors.yellow },
+				},
+				{
+					provider = function(self)
+						return self.infos > 0 and (self.icons.info .. self.infos .. " ") or ""
+					end,
+					hl = { fg = colors.blue },
+				},
+				{
+					provider = function(self)
+						return self.hints > 0 and (self.icons.hint .. self.hints) or ""
+					end,
+					hl = { fg = colors.mauve },
+				},
 			}
 
-			-- LSP clients component
 			local LSPClients = {
 				condition = conditions.lsp_attached,
-				provider = function()
+				init = function(self)
 					local clients = {}
 					for _, client in ipairs(vim.lsp.get_clients({ bufnr = 0 })) do
 						if client.name ~= "null-ls" then
-							clients[#clients + 1] = client.name
+							table.insert(clients, client.name)
 						end
 					end
-					return #clients > 0 and ("󰒋 " .. table.concat(clients, ", ")) or ""
+					self.clients = clients
 				end,
-				hl = { fg = colors.mauve },
+				static = {
+					max_len = 30,
+					icon = "",
+				},
+				hl = { fg = colors.mauve, bold = true },
+				provider = function(self)
+					if #self.clients == 0 then
+						return ""
+					end
+					local text = table.concat(self.clients, ", ")
+					if #text > self.max_len then
+						text = text:sub(1, self.max_len - 3) .. "..."
+					end
+					return string.format(" %s %s", self.icon, text)
+				end,
 				update = { "LspAttach", "LspDetach" },
 			}
 
-			-- Filetype, encoding, and format component
-			local FileTypeEncoding = {
+			local FileEncoding = {
 				provider = function()
-					local ft = vim.bo.filetype
 					local enc = vim.bo.fileencoding ~= "" and vim.bo.fileencoding or "utf-8"
-					local ff = vim.bo.fileformat
-					return string.format("󰈔 %s |  %s | ↵ %s", ft, enc, ff)
+					return " " .. enc
 				end,
-				hl = { fg = colors.text },
+				hl = { fg = colors.overlay2 },
 			}
 
-			-- Cursor position component
 			local Ruler = {
-				provider = "󰍎%7(%l/%3L%):%2c %P",
-				hl = { fg = colors.text },
+				init = function(self)
+					local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+					local lines = vim.api.nvim_buf_line_count(0)
+					self.row = row
+					self.col = col + 1
+					self.lines = lines
+					self.percent = math.floor((row / lines) * 100)
+				end,
+				hl = { fg = colors.text, bold = true },
+				flexible = 1,
+				{
+					provider = function(self)
+						return string.format("󰍎 %d/%d", self.row, self.lines)
+					end,
+					hl = { fg = colors.blue, bold = true },
+				},
+				{
+					provider = function(self)
+						return string.format(" :%d ", self.col)
+					end,
+					hl = { fg = colors.mauve },
+				},
+				{
+					provider = function(self)
+						return string.format("%d%%%%", self.percent)
+					end,
+					hl = { fg = colors.green },
+				},
 			}
 
-			-- Scrollbar component
 			local ScrollBar = {
 				static = {
 					sbar = { "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" },
@@ -147,7 +211,6 @@ return {
 				hl = { fg = colors.blue },
 			}
 
-			-- Statusline definition
 			local StatusLine = {
 				hl = function()
 					return conditions.is_active() and "StatusLine" or "StatusLineNC"
@@ -163,23 +226,20 @@ return {
 				Align,
 				LSPClients,
 				{ provider = " | " },
-				FileTypeEncoding,
+				FileEncoding,
 				Space,
 				Ruler,
 				Space,
 				ScrollBar,
 			}
 
-			-- Setup Heirline
 			require("heirline").setup({
 				statusline = StatusLine,
 			})
 
-			-- Autocommand for buffer listing
-			local group = vim.api.nvim_create_augroup("Heirline", { clear = true })
 			vim.api.nvim_create_autocmd("FileType", {
 				pattern = "*",
-				group = group,
+				group = vim.api.nvim_create_augroup("Heirline", { clear = true }),
 				callback = function()
 					if vim.tbl_contains({ "wipe", "delete" }, vim.bo.bufhidden) then
 						vim.bo.buflisted = false
