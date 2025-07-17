@@ -9,22 +9,18 @@ return {
 				win_options = {
 					winblend = 10,
 					wrap = false,
-					winhighlight = {
-						Normal = "NormalFloat",
-						FloatBorder = "FloatBorder",
-						Title = "FloatTitle",
-					},
+					winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder,Title:FloatTitle",
 				},
 				get_config = function(opts)
 					local prompt = opts.prompt or ""
 					if prompt:find("Mason") then
-						opts.default_prompt = " Mason ➤ "
+						return { default_prompt = " Mason ➤ " }
 					elseif prompt:find("DAP") then
-						opts.default_prompt = " DAP ➤ "
+						return { default_prompt = " DAP ➤ " }
 					elseif prompt:find("Overseer") then
-						opts.default_prompt = " Overseer ➤ "
+						return { default_prompt = " Overseer ➤ " }
 					end
-					return opts
+					return nil
 				end,
 			},
 			select = {
@@ -45,30 +41,24 @@ return {
 				builtin = {
 					win_options = {
 						winblend = 10,
-						winhighlight = {
-							Normal = "NormalFloat",
-							FloatBorder = "FloatBorder",
-							Title = "FloatTitle",
-							CursorLine = "Visual",
-							Cursor = "Cursor",
-						},
+						winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder,Title:FloatTitle,CursorLine:Visual,Cursor:Cursor",
 					},
 					border = "rounded",
 					animate = {
-						open = { "slide", { distance = 5 } },
+						open = { "slide", distance = 5 },
 					},
 				},
 				get_config = function(opts)
 					if opts.kind == "mason.nvim" then
-						opts.title = " Mason Packages"
+						return { title = " Mason Packages" }
 					elseif opts.kind == "dap" then
-						opts.title = " DAP Configurations"
+						return { title = " DAP Configurations" }
 					elseif opts.kind == "overseer" then
-						opts.title = " Overseer Tasks"
+						return { title = " Overseer Tasks" }
 					elseif opts.kind == "code_action" then
-						opts.title = " Code Actions"
+						return { title = " Code Actions" }
 					end
-					return opts
+					return nil
 				end,
 			},
 		},
@@ -82,8 +72,6 @@ return {
 					fg = vim.api.nvim_get_hl_by_name("CatppuccinBlue", true).foreground,
 					bold = true,
 				})
-				vim.api.nvim_set_hl(0, "LspSagaNormal", { link = "NormalFloat" })
-				vim.api.nvim_set_hl(0, "LspSagaBorder", { link = "FloatBorder" })
 			end
 		end,
 	},

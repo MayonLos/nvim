@@ -7,6 +7,12 @@ return {
 			require("catppuccin").setup({
 				integrations = {
 					barbar = true,
+					barbecue = {
+						dim_dirname = true,
+						bold_basename = true,
+						dim_context = false,
+						alt_background = false,
+					},
 					diffview = true,
 					gitsigns = true,
 					mason = true,

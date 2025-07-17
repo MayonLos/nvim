@@ -30,48 +30,42 @@ return {
 		},
 
 		config = function(_, opts)
-			-- Initialize Mason
+			-- 初始化 Mason
 			require("mason").setup()
 
-			-- Apply diagnostic signs
+			-- 应用诊断标志
 			require("utils.icons").apply_diagnostic_signs()
 
-			-- Shared capabilities
+			-- 共享的 LSP 能力
 			local capabilities = vim.tbl_deep_extend(
 				"force",
 				require("blink.cmp").get_lsp_capabilities(),
 				{ inlayHint = { enable = true } }
 			)
 
-			-- LSP attachment handler
+			-- LSP 附件处理
 			local on_attach = function(client, bufnr)
-				-- Enable inlay hints if supported
+				-- 启用内嵌提示（Inlay Hints）
 				if client.server_capabilities.inlayHintProvider then
 					vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
 				end
 
-				-- Keybindings configuration
+				-- 快捷键配置
 				local keymap_opts = { buffer = bufnr, desc = "" }
 				local bind = function(mode, lhs, rhs, desc)
 					keymap_opts.desc = desc
 					vim.keymap.set(mode, lhs, rhs, keymap_opts)
 				end
 
-				bind("n", "<leader>ld", "<cmd>Lspsaga goto_definition<CR>", "Go to definition")
-				bind("n", "<leader>lt", "<cmd>Lspsaga goto_type_definition<CR>", "Go to type definition")
-				bind("n", "<leader>lp", "<cmd>Lspsaga peek_definition<CR>", "Peek definition")
-				bind("n", "<leader>lh", "<cmd>Lspsaga hover_doc<CR>", "Hover documentation")
-				bind("n", "<leader>lr", "<cmd>Lspsaga rename<CR>", "Rename symbol")
-				bind("n", "<leader>la", "<cmd>Lspsaga code_action<CR>", "Code actions")
-				bind(
-					"n",
-					"<leader>ls",
-					"<cmd>Lspsaga show_workspace_diagnostics<CR>",
-					"Workspace diagnostics"
-				)
+				-- 使用 Neovim 内置 LSP 功能
+				bind("n", "<leader>ld", vim.lsp.buf.definition, "Go to definition")
+				bind("n", "<leader>lt", vim.lsp.buf.type_definition, "Go to type definition")
+				bind("n", "<leader>lh", vim.lsp.buf.hover, "Hover documentation")
+				bind("n", "<leader>lr", vim.lsp.buf.rename, "Rename symbol")
+				bind("n", "<leader>la", vim.lsp.buf.code_action, "Code actions")
 			end
 
-			-- Configure LSP servers
+			-- 配置 LSP 服务器
 			for server, config in pairs(opts.servers) do
 				require("lspconfig")[server].setup(vim.tbl_deep_extend("force", {
 					on_attach = on_attach,
