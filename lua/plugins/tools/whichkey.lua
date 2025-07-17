@@ -7,15 +7,15 @@ return {
 			local wk = require("which-key")
 			wk.setup({})
 			wk.add({
+				{ "<leader>a", group = "AI" },
+				{ "<leader>b", group = "buffer" },
 				{ "<leader>f", group = "file" },
-				{ "<leader>s", group = "session/split" },
 				{ "<leader>g", group = "git" },
 				{ "<leader>l", group = "lsp" },
-				{ "<leader>x", group = "diagnostics" },
 				{ "<leader>m", group = "markdown" },
-				{ "<leader>a", group = "AI" },
+				{ "<leader>s", group = "session/split" },
 				{ "<leader>t", group = "terminal" },
-				{ "<leader>b", group = "buffer" },
+				{ "<leader>x", group = "diagnostics" },
 			})
 		end,
 	},
