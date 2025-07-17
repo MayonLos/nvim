@@ -24,11 +24,11 @@ vim.opt.path:append("**")
 vim.opt.suffixesadd:append(".lua")
 -- encoding
 vim.opt.fileencodings = {
-	"utf-8",
-	"gb18030",
-	"gbk",
-	"cp936",
-	"big5",
-	"shiftjis",
-	"latin1",
+    "utf-8",
+    "gb18030",
+    "gbk",
+    "cp936",
+    "big5",
+    "shiftjis",
+    "latin1",
 }
