@@ -2,7 +2,7 @@ return {
     "neovim/nvim-lspconfig",
     event = { "BufReadPre", "BufNewFile" },
     dependencies = {
-        "mason-org/mason.nvim",
+        "mason.nvim",
         "saghen/blink.cmp",
         "nvim-tree/nvim-web-devicons",
     },
@@ -58,7 +58,7 @@ return {
         -- Initialize Mason
         require("mason").setup()
 
-        -- Apply diagnostic signs
+        -- Apply diagnostic icons
         local has_icons, icons = pcall(require, "utils.icons")
         if has_icons then
             icons.apply_diagnostic_signs()
@@ -77,12 +77,12 @@ return {
 
         -- Enhanced LSP attach handler
         local on_attach = function(client, bufnr)
-            -- Enable inlay hints if supported
+            -- Enable inlay hints (if supported)
             if client.server_capabilities.inlayHintProvider and opts.inlay_hints.enabled then
                 vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
             end
 
-            -- Keymap helper function
+            -- Key mapping helper function
             local function bind(mode, lhs, rhs, desc)
                 vim.keymap.set(mode, lhs, rhs, {
                     buffer = bufnr,
@@ -92,13 +92,7 @@ return {
                 })
             end
 
-            -- LSP keymaps
-            -- LSP相关快捷键
-            bind("n", "gd", vim.lsp.buf.definition, "Go to definition")
-            bind("n", "gD", vim.lsp.buf.declaration, "Go to declaration")
-            bind("n", "gt", vim.lsp.buf.type_definition, "Go to type definition")
-            bind("n", "gi", vim.lsp.buf.implementation, "Go to implementation")
-            bind("n", "gr", vim.lsp.buf.references, "Show references")
+            -- Core LSP key mappings (non-telescope)
             bind("n", "K", vim.lsp.buf.hover, "Hover documentation")
             bind("n", "<leader>k", vim.lsp.buf.signature_help, "Signature help")
             bind("n", "<leader>lrn", vim.lsp.buf.rename, "Rename symbol")
@@ -107,11 +101,20 @@ return {
                 vim.lsp.buf.format({ async = true })
             end, "Format document")
 
-            -- 诊断相关快捷键
+            -- Diagnostic key mappings
             bind("n", "<leader>le", vim.diagnostic.open_float, "Show diagnostic")
             bind("n", "<leader>lq", vim.diagnostic.setloclist, "Diagnostic list")
             bind("n", "[d", vim.diagnostic.goto_prev, "Previous diagnostic")
             bind("n", "]d", vim.diagnostic.goto_next, "Next diagnostic")
+
+            -- Toggle inlay hints
+            bind("n", "<leader>lh", function()
+                vim.lsp.inlay_hint.enable(
+                    not vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr }),
+                    { bufnr = bufnr }
+                )
+            end, "Toggle inlay hints")
+
             -- Document highlighting
             if client.server_capabilities.documentHighlightProvider then
                 local group = vim.api.nvim_create_augroup("lsp_document_highlight", { clear = false })
@@ -127,19 +130,22 @@ return {
                 })
             end
 
-            -- Auto-format on save (optional)
-            if client.supports_method("textDocument/formatting") then
+            -- Auto-format on save
+            -- Use new API to check method support
+            if client:supports_method("textDocument/formatting") then
                 vim.api.nvim_create_autocmd("BufWritePre", {
                     group = vim.api.nvim_create_augroup("lsp_format_on_save", { clear = false }),
                     buffer = bufnr,
                     callback = function()
-                        vim.lsp.buf.format({ async = false })
+                        if vim.g.autoformat_enabled ~= false then
+                            vim.lsp.buf.format({ async = false })
+                        end
                     end,
                 })
             end
         end
 
-        -- Setup LSP servers
+        -- Set up LSP servers
         for server, config in pairs(opts.servers) do
             local server_config = vim.tbl_deep_extend("force", {
                 on_attach = on_attach,
@@ -149,30 +155,49 @@ return {
             require("lspconfig")[server].setup(server_config)
         end
 
-        -- Modern LSP configuration using vim.lsp.config
-        vim.lsp.config("*", {
+        -- Modern LSP configuration - using new API
+        local lsp_config = {
             handlers = {
                 ["textDocument/hover"] = function(err, result, ctx, config)
                     config = config or {}
                     config.border = "rounded"
                     config.max_width = 80
                     config.max_height = 20
-                    vim.lsp.handlers["textDocument/hover"](err, result, ctx, config)
+                    return vim.lsp.handlers["textDocument/hover"](err, result, ctx, config)
                 end,
                 ["textDocument/signatureHelp"] = function(err, result, ctx, config)
                     config = config or {}
                     config.border = "rounded"
                     config.max_width = 80
                     config.max_height = 20
-                    vim.lsp.handlers["textDocument/signatureHelp"](err, result, ctx, config)
+                    return vim.lsp.handlers["textDocument/signatureHelp"](err, result, ctx, config)
                 end,
             },
-        })
+        }
 
-        -- 全局LSP设置
+        -- Apply configuration to all LSP clients
+        for server, _ in pairs(opts.servers) do
+            vim.lsp.config(server, lsp_config)
+        end
+
+        -- LSP server management commands
+        vim.api.nvim_create_user_command("LspRestart", function()
+            vim.cmd("LspStop")
+            vim.defer_fn(function()
+                vim.cmd("LspStart")
+            end, 500)
+        end, { desc = "Restart LSP servers" })
+
+        vim.api.nvim_create_user_command("LspLog", function()
+            vim.cmd("edit " .. vim.lsp.get_log_path())
+        end, { desc = "Open LSP log file" })
+
+        vim.api.nvim_create_user_command("LspInfo", function()
+            vim.cmd("LspInfo")
+        end, { desc = "Show LSP information" })
+
+        -- Global LSP settings
         vim.lsp.set_log_level("WARN")
-
-        -- 提升LSP性能
         vim.opt.updatetime = 250
         vim.opt.signcolumn = "yes"
     end,

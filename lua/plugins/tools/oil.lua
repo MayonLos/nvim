@@ -11,29 +11,29 @@ return {
     },
     config = function()
         -- ===============================
-        -- 键位映射配置
+        -- Keymap configuration
         -- ===============================
         local keymaps = {
-            -- 基础操作
+            -- Basic operations
             ["q"] = "actions.close",
             ["<CR>"] = "actions.select",
             ["<BS>"] = "actions.parent",
 
-            -- 分割窗口打开
+            -- Split window open
             ["<C-s>"] = { "actions.select", opts = { vertical = true } },
             ["<C-v>"] = { "actions.select", opts = { horizontal = true } },
             ["<C-t>"] = { "actions.select", opts = { tab = true } },
 
-            -- 目录操作
+            -- Directory operations
             ["~"] = "actions.tcd",
 
-            -- 显示控制
+            -- Display controls
             ["g."] = "actions.toggle_hidden",
             ["g?"] = "actions.show_help",
         }
 
         -- ===============================
-        -- 视图选项配置
+        -- View options configuration
         -- ===============================
         local view_options = {
             show_hidden = true,
@@ -45,7 +45,7 @@ return {
         }
 
         -- ===============================
-        -- 浮动窗口配置
+        -- Floating window configuration
         -- ===============================
         local float_config = {
             padding = 2,
@@ -60,7 +60,7 @@ return {
         }
 
         -- ===============================
-        -- 窗口选项配置
+        -- Window options configuration
         -- ===============================
         local win_options = {
             signcolumn = "yes",
@@ -69,7 +69,7 @@ return {
         }
 
         -- ===============================
-        -- Git 集成配置
+        -- Git integration configuration
         -- ===============================
         local git_config = {
             add = function(path)
@@ -84,7 +84,7 @@ return {
         }
 
         -- ===============================
-        -- 预览窗口配置
+        -- Preview window configuration
         -- ===============================
         local preview_config = {
             preview_method = "fast_scratch",
@@ -92,7 +92,7 @@ return {
         }
 
         -- ===============================
-        -- 性能配置
+        -- Performance configuration
         -- ===============================
         local performance_config = {
             watch_for_changes = false,
@@ -100,16 +100,16 @@ return {
         }
 
         -- ===============================
-        -- 主配置
+        -- Main configuration
         -- ===============================
         require("oil").setup({
-            -- 基础设置
+            -- Basic settings
             default_file_explorer = true,
             delete_to_trash = true,
             skip_confirm_for_simple_edits = true,
             constrain_cursor = false,
 
-            -- 功能模块配置
+            -- Feature module configuration
             view_options = view_options,
             float = float_config,
             win_options = win_options,
@@ -117,7 +117,7 @@ return {
             git = git_config,
             preview_win = preview_config,
 
-            -- 性能配置
+            -- Performance configuration
             watch_for_changes = performance_config.watch_for_changes,
             cleanup_delay_ms = performance_config.cleanup_delay_ms,
         })

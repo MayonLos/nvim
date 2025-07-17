@@ -7,11 +7,11 @@ return {
         version = "1.*",
         opts_extend = { "sources.default" },
         config = function()
-            -- ===============================
-            -- 键位映射配置
-            -- ===============================
+            -- =================================
+            -- Keymap configuration
+            -- =================================
             local keymaps = {
-                -- 插入模式键位映射
+                -- Insert mode keymaps
                 insert = {
                     ["<C-space>"] = { "show", "show_documentation", "hide_documentation" },
                     ["<C-e>"] = { "hide" },
@@ -25,7 +25,7 @@ return {
                     ["<C-k>"] = { "show_signature", "hide_signature", "fallback" },
                 },
 
-                -- 命令行模式键位映射
+                -- Cmdline mode keymaps
                 cmdline = {
                     ["<Tab>"] = { "show_and_insert", "select_next" },
                     ["<S-Tab>"] = { "show_and_insert", "select_prev" },
@@ -33,14 +33,14 @@ return {
                 },
             }
 
-            -- ===============================
-            -- 补全源配置
-            -- ===============================
+            -- =================================
+            -- Completion sources configuration
+            -- =================================
             local sources = {
-                -- 默认补全源
+                -- Default completion sources
                 default = { "lsp", "path", "snippets", "buffer" },
 
-                -- 自定义补全源提供者
+                -- Custom completion source providers
                 providers = {
                     markdown = {
                         name = "RenderMarkdown",
@@ -49,7 +49,7 @@ return {
                     },
                 },
 
-                -- 按文件类型配置补全源
+                -- Filetype-specific completion sources
                 per_filetype = {
                     markdown = {
                         inherit_defaults = true,
@@ -58,9 +58,9 @@ return {
                 },
             }
 
-            -- ===============================
-            -- 禁用补全的文件类型
-            -- ===============================
+            -- =================================
+            -- Disabled filetypes for completion
+            -- =================================
             local disabled_filetypes = {
                 "oil",
                 "NvimTree",
@@ -68,21 +68,21 @@ return {
                 "copilot-chat",
             }
 
-            -- ===============================
-            -- 补全功能配置
-            -- ===============================
+            -- =================================
+            -- Completion feature configuration
+            -- =================================
             local completion_config = {
-                -- 文档配置
+                -- Documentation configuration
                 documentation = {
                     auto_show = true,
                 },
 
-                -- 关键字匹配配置
+                -- Keyword matching configuration
                 keyword = {
                     range = "full",
                 },
 
-                -- 列表选择配置
+                -- List selection configuration
                 list = {
                     selection = {
                         preselect = true,
@@ -90,15 +90,15 @@ return {
                     },
                 },
 
-                -- 幽灵文本配置
+                -- Ghost text configuration
                 ghost_text = {
                     enabled = true,
                 },
             }
 
-            -- ===============================
-            -- 命令行补全配置
-            -- ===============================
+            -- =================================
+            -- Cmdline completion configuration
+            -- =================================
             local cmdline_config = {
                 completion = {
                     list = {
@@ -111,46 +111,46 @@ return {
                 keymap = keymaps.cmdline,
             }
 
-            -- ===============================
-            -- 外观配置
-            -- ===============================
+            -- =================================
+            -- Appearance configuration
+            -- =================================
             local appearance_config = {
                 nerd_font_variant = "mono",
             }
 
-            -- ===============================
-            -- 启用条件判断
-            -- ===============================
+            -- =================================
+            -- Enable condition function
+            -- =================================
             local function is_enabled()
                 return not vim.tbl_contains(disabled_filetypes, vim.bo.filetype)
             end
 
-            -- ===============================
-            -- 主配置
-            -- ===============================
+            -- =================================
+            -- Main configuration
+            -- =================================
             require("blink.cmp").setup({
-                -- 键位映射
+                -- Keymap configuration
                 keymap = vim.tbl_extend("force", { preset = "none" }, keymaps.insert),
 
-                -- 启用条件
+                -- Enable condition
                 enabled = is_enabled,
 
-                -- 外观配置
+                -- Appearance configuration
                 appearance = appearance_config,
 
-                -- 函数签名
+                -- Signature configuration
                 signature = { enabled = true },
 
-                -- 命令行配置
+                -- Cmdline configuration
                 cmdline = cmdline_config,
 
-                -- 补全功能配置
+                -- Completion feature configuration
                 completion = completion_config,
 
-                -- 补全源配置
+                -- Completion sources configuration
                 sources = sources,
 
-                -- 模糊匹配引擎
+                -- Fuzzy matching engine
                 fuzzy = {
                     implementation = "prefer_rust_with_warning",
                 },
