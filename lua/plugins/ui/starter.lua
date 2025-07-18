@@ -1,98 +1,110 @@
 return {
-	{
-		"goolord/alpha-nvim",
-		event = "VimEnter",
-		dependencies = { "nvim-tree/nvim-web-devicons" },
-		config = function()
-			local alpha = require("alpha")
-			local dashboard = require("alpha.themes.dashboard")
-			local pad = string.rep(" ", 4) -- Consistent padding of 4 spaces
+    {
+        "goolord/alpha-nvim",
+        event = "VimEnter",
+        dependencies = { "nvim-tree/nvim-web-devicons" },
+        config = function()
+            local alpha = require("alpha")
+            local dashboard = require("alpha.themes.dashboard")
 
-			-- Configuring header with ASCII art
-			dashboard.section.header.val = {
-				"███╗   ██╗███████╗ ██████╗ ██╗   ██╗██╗███╗   ███╗",
-				"████╗  ██║██╔════╝██╔═══██╗██║   ██║██║████╗ ████║",
-				"██╔██╗ ██║█████╗  ██║   ██║██║   ██║██║██╔████╔██║",
-				"██║╚██╗██║██╔══╝  ██║   ██║██║   ██║██║██║╚██╔╝██║",
-				"██║ ╚████║███████╗╚██████╔╝╚██████╔╝██║██║ ╚═╝ ██║",
-				"╚═╝  ╚═══╝╚══════╝ ╚═════╝  ╚═════╝ ╚═╝╚═╝     ╚═╝",
-			}
-			dashboard.section.header.opts.hl = "AlphaHeader"
+            -- ASCII art header with Nerd Font icons
+            dashboard.section.header.val = {
+                "   ███╗   ██╗███████╗ ██████╗ ██╗   ██╗██╗███╗   ███╗   ",
+                "   ████╗  ██║██╔════╝██╔═══██╗██║   ██║██║████╗ ████║   ",
+                "   ██╔██╗ ██║█████╗  ██║   ██║██║   ██║██║██╔████╔██║   ",
+                "   ██║╚██╗██║██╔══╝  ██║   ██║██║   ██║██║██║╚██╔╝██║   ",
+                "   ██║ ╚████║███████╗╚██████╔╝╚██████╔╝██║██║ ╚═╝ ██║   ",
+                "   ╚═╝  ╚═══╝╚══════╝ ╚═════╝  ╚═════╝ ╚═╝╚═╝     ╚═╝   ",
+            }
 
-			-- Configuring dashboard buttons with single-character keybindings
-			dashboard.section.buttons.val = {
-				dashboard.button("f", "󰱼  Find Files", "<cmd>lua require('telescope.builtin').find_files()<CR>"),
-				dashboard.button("g", "  Live Grep", "<cmd>lua require('telescope.builtin').live_grep()<CR>"),
-				dashboard.button("r", "  Recent Files", "<cmd>lua require('telescope.builtin').oldfiles()<CR>"),
-				dashboard.button("h", "󰋖  Help Tags", "<cmd>lua require('telescope.builtin').help_tags()<CR>"),
-				dashboard.button(
-					"c",
-					"⚙  Config Files",
-					"<cmd>lua require('telescope.builtin').find_files({ cwd = vim.fn.stdpath('config') })<CR>"
-				),
-				dashboard.button("l", "󰒋  Plugin Manager", "<cmd>Lazy<CR>"),
-				dashboard.button("n", "  New File", "<cmd>ene <BAR> startinsert<CR>"),
-				dashboard.button("q", "󰅚  Quit Neovim", "<cmd>qa<CR>"),
-			}
-			dashboard.section.buttons.opts.hl = "AlphaButtons"
-			dashboard.section.buttons.opts.hl_shortcut = "AlphaShortcut"
+            -- Dashboard buttons with Nerd Font icons
+            dashboard.section.buttons.val = {
+                dashboard.button("f", "󰈞  Find Files", "<cmd>Telescope find_files<CR>"),
+                dashboard.button("g", "󰺮  Live Grep", "<cmd>Telescope live_grep<CR>"),
+                dashboard.button("r", "󱋢  Recent Files", "<cmd>Telescope oldfiles<CR>"),
+                dashboard.button("h", "󰋖  Help Tags", "<cmd>Telescope help_tags<CR>"),
+                dashboard.button(
+                    "c",
+                    "󰒓  Config Files",
+                    "<cmd>Telescope find_files cwd=" .. vim.fn.stdpath("config") .. "<CR>"
+                ),
+                dashboard.button("l", "󰒋  Plugin Manager", "<cmd>Lazy<CR>"),
+                dashboard.button("n", "  New File", "<cmd>ene <BAR> startinsert<CR>"),
+                dashboard.button("q", "󰅚  Quit Neovim", "<cmd>qa<CR>"),
+            }
 
-			-- Configuring footer with dynamic plugin statistics
-			dashboard.section.footer.val = pad .. "Loading plugins..."
-			dashboard.section.footer.opts.hl = "AlphaFooter"
+            -- Initial footer with icon
+            dashboard.section.footer.val = "Loading plugins..."
 
-			-- Defining optimized layout with balanced spacing
-			dashboard.opts.layout = {
-				{ type = "padding", val = 5 }, -- Increased top padding for better balance
-				dashboard.section.header,
-				{ type = "padding", val = 3 }, -- Adjusted spacing between header and buttons
-				dashboard.section.buttons,
-				{ type = "padding", val = 2 }, -- Reduced footer padding for compactness
-				dashboard.section.footer,
-			}
+            -- Layout configuration
+            dashboard.opts.layout = {
+                { type = "padding", val = 5 },
+                dashboard.section.header,
+                { type = "padding", val = 3 },
+                dashboard.section.buttons,
+                { type = "padding", val = 2 },
+                dashboard.section.footer,
+            }
 
-			-- Setting up alpha with no autocmds for cleaner startup
-			dashboard.opts.opts.noautocmd = true
-			alpha.setup(dashboard.opts)
+            -- Highlight groups
+            dashboard.section.header.opts.hl = "AlphaHeader"
+            dashboard.section.buttons.opts.hl = "AlphaButtons"
+            dashboard.section.buttons.opts.hl_shortcut = "AlphaShortcut"
+            dashboard.section.footer.opts.hl = "AlphaFooter"
 
-			-- Managing statusline visibility
-			vim.api.nvim_create_autocmd("User", {
-				pattern = "AlphaReady",
-				callback = function()
-					vim.opt.laststatus = 0 -- Hide statusline when Alpha is active
-				end,
-			})
+            -- Disable autocmds for cleaner startup
+            dashboard.opts.opts.noautocmd = true
 
-			vim.api.nvim_create_autocmd("BufUnload", {
-				buffer = 0,
-				callback = function()
-					if vim.bo.filetype == "alpha" then
-						vim.opt.laststatus = 2 -- Restore statusline when Alpha closes
-					end
-				end,
-			})
+            -- Setup alpha
+            alpha.setup(dashboard.opts)
 
-			-- Updating footer with plugin statistics on LazyVim startup
-			vim.api.nvim_create_autocmd("User", {
-				pattern = "LazyVimStarted",
-				callback = function(ev)
-					local stats = require("lazy").stats()
-					local ms = math.floor(stats.startuptime * 100 + 0.5) / 100 -- Rounded to 2 decimal places
-					dashboard.section.footer.val = pad
-						.. string.format("⚡ %d/%d plugins loaded in %.2fms", stats.loaded, stats.count, ms)
-					if vim.bo[ev.buf].filetype == "alpha" then
-						pcall(alpha.start, true) -- Refresh Alpha if active
-					end
-				end,
-			})
+            -- Autocommands
+            local alpha_group = vim.api.nvim_create_augroup("AlphaConfig", { clear = true })
 
-			-- Disabling folding for Alpha buffer
-			vim.api.nvim_create_autocmd("FileType", {
-				pattern = "alpha",
-				callback = function()
-					vim.opt_local.nofoldenable = true
-				end,
-			})
-		end,
-	},
+            -- Hide statusline when Alpha is active
+            vim.api.nvim_create_autocmd("User", {
+                pattern = "AlphaReady",
+                group = alpha_group,
+                callback = function()
+                    vim.opt.laststatus = 0
+                end,
+            })
+
+            -- Restore statusline when leaving Alpha
+            vim.api.nvim_create_autocmd("BufUnload", {
+                buffer = 0,
+                group = alpha_group,
+                callback = function()
+                    if vim.bo.filetype == "alpha" then
+                        vim.opt.laststatus = 2
+                    end
+                end,
+            })
+
+            -- Update footer with plugin statistics and icon
+            vim.api.nvim_create_autocmd("User", {
+                pattern = "LazyVimStarted",
+                group = alpha_group,
+                callback = function(ev)
+                    local stats = require("lazy").stats()
+                    local ms = math.floor(stats.startuptime * 100 + 0.5) / 100
+                    dashboard.section.footer.val =
+                        string.format("⚡ %d/%d plugins loaded in %.2fms", stats.loaded, stats.count, ms)
+                    -- Refresh Alpha if currently active
+                    if vim.bo[ev.buf].filetype == "alpha" then
+                        pcall(alpha.start, true)
+                    end
+                end,
+            })
+
+            -- Disable folding for Alpha buffer
+            vim.api.nvim_create_autocmd("FileType", {
+                pattern = "alpha",
+                group = alpha_group,
+                callback = function()
+                    vim.opt_local.foldenable = false
+                end,
+            })
+        end,
+    },
 }
