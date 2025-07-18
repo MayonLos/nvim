@@ -75,8 +75,6 @@ return {
 
         sort = { "local", "order", "group", "alphanum", "mod" },
 
-        expand = 1,
-
         replace = {
             ["<leader>"] = "SPC",
             ["<cr>"] = "RET",
