@@ -1,37 +1,27 @@
 return {
     "nvim-tree/nvim-tree.lua",
     version = "*",
-    dependencies = { "nvim-tree/nvim-web-devicons" },
     event = "VeryLazy",
+    dependencies = { "nvim-tree/nvim-web-devicons" },
     config = function()
         local api = require("nvim-tree.api")
         local tree = api.tree
 
-        -- ===============================
-        -- Sort method cycle support
-        -- ===============================
+        -- ========== Sort Cycle ==========
         local SORT_METHODS = { "name", "case_sensitive", "modification_time", "extension" }
-        local sort_current = 1
-
+        local sort_index = 1
         local function cycle_sort()
-            if sort_current >= #SORT_METHODS then
-                sort_current = 1
-            else
-                sort_current = sort_current + 1
-            end
-            api.tree.reload()
+            sort_index = sort_index % #SORT_METHODS + 1
+            tree.reload()
         end
-
         local function sort_by()
-            return SORT_METHODS[sort_current]
+            return SORT_METHODS[sort_index]
         end
 
-        -- ===============================
-        -- Custom action functions
-        -- ===============================
-        local custom_actions = {}
+        -- ========== Custom Actions ==========
+        local actions = {}
 
-        function custom_actions.aria_left()
+        function actions.aria_left()
             local node = tree.get_node_under_cursor()
             if node.nodes and node.open then
                 api.node.open.edit()
@@ -40,14 +30,14 @@ return {
             end
         end
 
-        function custom_actions.aria_right()
+        function actions.aria_right()
             local node = tree.get_node_under_cursor()
             if node.nodes and not node.open then
                 api.node.open.edit()
             end
         end
 
-        function custom_actions.edit_or_open()
+        function actions.edit_or_open()
             local node = tree.get_node_under_cursor()
             if node.nodes then
                 api.node.open.edit()
@@ -57,71 +47,63 @@ return {
             end
         end
 
-        function custom_actions.vsplit_preview()
+        function actions.vsplit_preview()
             local node = tree.get_node_under_cursor()
-            if node.nodes then
-                api.node.open.edit()
-            else
+            if not node.nodes then
                 api.node.open.vertical()
+            else
+                api.node.open.edit()
             end
             tree.focus()
         end
 
-        function custom_actions.open_tab_silent(node)
-            api.node.open.tab(node)
-            vim.cmd.tabprev()
+        function actions.open_tab_silent()
+            api.node.open.tab()
+            vim.cmd("tabprev")
         end
 
-        function custom_actions.git_add()
+        function actions.git_add()
             local node = tree.get_node_under_cursor()
-            local git_status = node.git_status.file
-            if not git_status then
-                git_status = (node.git_status.dir.direct and node.git_status.dir.direct[1])
-                    or (node.git_status.dir.indirect and node.git_status.dir.indirect[1])
-            end
+            local git_status = node.git_status and node.git_status.file
+            git_status = git_status or (node.git_status.dir.direct and node.git_status.dir.direct[1])
             if git_status then
+                local path = vim.fn.shellescape(node.absolute_path)
                 if git_status:match("^[%?%s]") or git_status:match("M$") then
-                    vim.cmd("silent !git add " .. vim.fn.shellescape(node.absolute_path))
+                    vim.fn.jobstart({ "git", "add", path }, { detach = true })
                 elseif git_status:match("^[MA]") then
-                    vim.cmd("silent !git restore --staged " .. vim.fn.shellescape(node.absolute_path))
+                    vim.fn.jobstart({ "git", "restore", "--staged", path }, { detach = true })
                 end
             end
             tree.reload()
         end
 
-        local function change_root_to_global_cwd()
-            local global_cwd = vim.fn.getcwd(-1, -1)
-            api.tree.change_root(global_cwd)
+        function actions.change_root_to_global()
+            api.tree.change_root(vim.fn.getcwd(-1, -1))
         end
 
-        -- ===============================
-        -- Mark operations
-        -- ===============================
-        local mark_operations = {}
-
-        function mark_operations.mark_move_j()
-            api.marks.toggle()
-            vim.cmd("normal! j")
-        end
-
-        function mark_operations.mark_move_k()
-            api.marks.toggle()
-            vim.cmd("normal! k")
-        end
-
+        -- ========== Marked File Ops ==========
         local function get_marked_or_current()
             local marks = api.marks.list()
-            if #marks == 0 then
-                marks = { tree.get_node_under_cursor() }
-            end
-            return marks
+            return #marks > 0 and marks or { tree.get_node_under_cursor() }
         end
 
-        function mark_operations.trash_files()
-            local marks = get_marked_or_current()
-            vim.ui.input({ prompt = string.format("Trash %d file(s)? [y/N]: ", #marks) }, function(input)
+        local marks = {}
+
+        function marks.toggle_down()
+            api.marks.toggle()
+            vim.cmd.normal("j")
+        end
+
+        function marks.toggle_up()
+            api.marks.toggle()
+            vim.cmd.normal("k")
+        end
+
+        function marks.trash()
+            local files = get_marked_or_current()
+            vim.ui.input({ prompt = ("Trash %d file(s)? [y/N]: "):format(#files) }, function(input)
                 if input and input:lower() == "y" then
-                    for _, node in ipairs(marks) do
+                    for _, node in ipairs(files) do
                         api.fs.trash(node)
                     end
                     api.marks.clear()
@@ -130,149 +112,112 @@ return {
             end)
         end
 
-        function mark_operations.remove_files()
-            local marks = get_marked_or_current()
-            vim.ui.input(
-                { prompt = string.format("Permanently delete %d file(s)? [y/N]: ", #marks) },
-                function(input)
-                    if input and input:lower() == "y" then
-                        for _, node in ipairs(marks) do
-                            api.fs.remove(node)
-                        end
-                        api.marks.clear()
-                        tree.reload()
+        function marks.remove()
+            local files = get_marked_or_current()
+            vim.ui.input({ prompt = ("Delete %d file(s)? [y/N]: "):format(#files) }, function(input)
+                if input and input:lower() == "y" then
+                    for _, node in ipairs(files) do
+                        api.fs.remove(node)
                     end
+                    api.marks.clear()
+                    tree.reload()
                 end
-            )
+            end)
         end
 
-        function mark_operations.copy_files()
-            local marks = get_marked_or_current()
-            for _, node in ipairs(marks) do
+        function marks.copy()
+            for _, node in ipairs(get_marked_or_current()) do
                 api.fs.copy.node(node)
             end
             api.marks.clear()
-            tree.reload()
         end
 
-        function mark_operations.cut_files()
-            local marks = get_marked_or_current()
-            for _, node in ipairs(marks) do
+        function marks.cut()
+            for _, node in ipairs(get_marked_or_current()) do
                 api.fs.cut(node)
             end
             api.marks.clear()
-            tree.reload()
         end
 
-        -- ===============================
-        -- Keymap configuration
-        -- ===============================
-        local function setup_keymaps(bufnr)
-            local function opts(desc)
-                return {
-                    desc = "nvim-tree: " .. desc,
+        -- ========== Keymaps ==========
+        local function on_attach(bufnr)
+            local function map(key, fn, desc)
+                vim.keymap.set("n", "<leader>e" .. key, fn, {
                     buffer = bufnr,
                     noremap = true,
                     silent = true,
                     nowait = true,
-                }
+                    desc = "nvim-tree: " .. desc,
+                })
             end
 
             api.config.mappings.default_on_attach(bufnr)
 
-            local core_mappings = {
-                ["<Left>"] = { custom_actions.aria_left, "ARIA: Left Arrow / Close Node / Parent" },
-                ["<Right>"] = { custom_actions.aria_right, "ARIA: Right Arrow / Open Node" },
-                ["h"] = { tree.close, "Close Current Tree" },
-                ["H"] = { tree.collapse_all, "Collapse All Trees" },
-                ["l"] = { custom_actions.edit_or_open, "Edit Or Open / Close Tree" },
-                ["L"] = { custom_actions.vsplit_preview, "Vsplit Preview / Keep Focus on Tree" },
-                ["T"] = { custom_actions.open_tab_silent, "Open Tab Silent" },
-                ["ga"] = { custom_actions.git_add, "Git Add/Restore" },
-                ["<C-c>"] = { change_root_to_global_cwd, "Change Root To Global CWD" },
-                ["J"] = { mark_operations.mark_move_j, "Toggle Bookmark Down" },
-                ["K"] = { mark_operations.mark_move_k, "Toggle Bookmark Up" },
-                ["dd"] = { mark_operations.cut_files, "Cut File(s)" },
-                ["df"] = { mark_operations.trash_files, "Trash File(s)" },
-                ["dF"] = { mark_operations.remove_files, "Remove File(s)" },
-                ["yy"] = { mark_operations.copy_files, "Copy File(s)" },
-                ["<leader>t"] = { cycle_sort, "Cycle Sort Method" },
-            }
-
-            for key, mapping in pairs(core_mappings) do
-                vim.keymap.set("n", key, mapping[1], opts(mapping[2]))
-            end
+            map("h", actions.aria_left, "Close node / Parent")
+            map("l", actions.aria_right, "Open node")
+            map("q", tree.close, "Close Tree")
+            map("c", tree.collapse_all, "Collapse All")
+            map("e", actions.edit_or_open, "Edit or Open")
+            map("v", actions.vsplit_preview, "Vsplit Preview")
+            map("t", actions.open_tab_silent, "Open in Tab (silent)")
+            map("g", actions.git_add, "Git Add / Restore")
+            map("r", actions.change_root_to_global, "Global CWD")
+            map("j", marks.toggle_down, "Mark Down")
+            map("k", marks.toggle_up, "Mark Up")
+            map("d", marks.cut, "Cut Files")
+            map("f", marks.trash, "Trash Files")
+            map("D", marks.remove, "Delete Files")
+            map("y", marks.copy, "Copy Files")
+            map("s", cycle_sort, "Cycle Sort")
         end
 
-        -- ===============================
-        -- nvim-tree setup
-        -- ===============================
+        -- ========== Setup ==========
         require("nvim-tree").setup({
-            view = {
-                width = 30,
-                side = "left",
-            },
-            git = {
-                enable = true,
-            },
-            live_filter = {
-                prefix = "[FILTER]: ",
-                always_show_folders = false,
-            },
-            ui = {
-                confirm = {
-                    remove = true,
-                    trash = false,
-                },
-            },
+            view = { width = 30, side = "left" },
+            git = { enable = true },
+            live_filter = { prefix = "[FILTER]: ", always_show_folders = false },
+            ui = { confirm = { remove = true, trash = false } },
             sort_by = sort_by,
-            on_attach = setup_keymaps,
+            on_attach = on_attach,
+            sync_root_with_cwd = true, -- Auto-lock to current file's directory
+            respect_buf_cwd = true, -- Respect buffer's cwd for root
+            update_focused_file = {
+                enable = true, -- Enable auto-locking to current file
+                update_root = true, -- Update root to current file's directory
+                ignore_list = {}, -- Files to ignore
+            },
         })
 
-        -- ===============================
-        -- Empty statusline on tree window
-        -- ===============================
+        -- ========== Empty statusline ==========
         api.events.subscribe(api.events.Event.TreeOpen, function()
-            local tree_winid = tree.winid()
-            if tree_winid then
-                vim.api.nvim_set_option_value("statusline", " ", { win = tree_winid })
+            local win = tree.winid()
+            if win then
+                vim.api.nvim_set_option_value("statusline", " ", { win = win })
             end
         end)
 
-        -- ===============================
-        -- Smart quit
-        -- ===============================
-        local function setup_smart_quit()
-            vim.api.nvim_create_autocmd({ "BufEnter", "QuitPre" }, {
-                nested = false,
-                callback = function(event)
-                    if not tree.is_visible() then
-                        return
-                    end
+        -- ========== Smart Quit ==========
+        vim.api.nvim_create_autocmd({ "BufEnter", "QuitPre" }, {
+            callback = function(event)
+                if not tree.is_visible() then
+                    return
+                end
+                local wins = vim.tbl_filter(function(w)
+                    return vim.api.nvim_win_get_config(w).focusable
+                end, vim.api.nvim_list_wins())
 
-                    local focusable_wins = vim.tbl_filter(function(winid)
-                        return vim.api.nvim_win_get_config(winid).focusable
-                    end, vim.api.nvim_list_wins())
+                if event.event == "QuitPre" and #wins == 2 then
+                    vim.cmd("qall")
+                elseif event.event == "BufEnter" and #wins == 1 then
+                    vim.defer_fn(function()
+                        tree.toggle({ find_file = true, focus = true })
+                        tree.toggle({ find_file = true, focus = false })
+                    end, 10)
+                end
+            end,
+        })
 
-                    local win_count = #focusable_wins
-
-                    if event.event == "QuitPre" and win_count == 2 then
-                        vim.api.nvim_cmd({ cmd = "qall" }, {})
-                    elseif event.event == "BufEnter" and win_count == 1 then
-                        vim.defer_fn(function()
-                            tree.toggle({ find_file = true, focus = true })
-                            tree.toggle({ find_file = true, focus = false })
-                        end, 10)
-                    end
-                end,
-            })
-        end
-
-        setup_smart_quit()
-
-        -- ===============================
-        -- Global toggle keymap
-        -- ===============================
+        -- ========== Global Toggle Key ==========
         vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>", {
             silent = true,
             noremap = true,

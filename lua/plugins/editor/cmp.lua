@@ -3,7 +3,8 @@ return {
         "saghen/blink.cmp",
         event = { "InsertEnter", "CmdlineEnter" },
         dependencies = { "rafamadriz/friendly-snippets" },
-        build = "cargo build --release",
+        --options: build
+        -- build = "cargo build --release",
         version = "1.*",
         opts_extend = { "sources.default" },
         config = function()

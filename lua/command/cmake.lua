@@ -812,7 +812,7 @@ function M.setup(user_config)
         desc = "Configure CMake generator",
     })
 
-    vim.notify("CMake plugin loaded successfully! 🚀", vim.log.levels.INFO)
+    -- vim.notify("CMake plugin loaded successfully! 🚀", vim.log.levels.INFO)
 end
 
 return M
