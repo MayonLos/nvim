@@ -76,7 +76,7 @@ return {
                 group = alpha_group,
                 callback = function()
                     if vim.bo.filetype == "alpha" then
-                        vim.opt.laststatus = 2
+                        vim.opt.laststatus = 3
                     end
                 end,
             })
