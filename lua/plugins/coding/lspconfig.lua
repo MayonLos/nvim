@@ -8,7 +8,7 @@ return {
     },
     opts = {
         servers = {
-            bashls = {},
+            -- C/C++ Language Server
             clangd = {
                 capabilities = { inlayHint = { enable = true } },
                 settings = {
@@ -18,32 +18,92 @@ return {
                             ParameterNames = true,
                             DeducedTypes = true,
                         },
+                        completion = {
+                            CompletionStyle = "detailed",
+                        },
+                    },
+                },
+                cmd = {
+                    "clangd",
+                    "--background-index",
+                    "--clang-tidy",
+                    "--header-insertion=iwyu",
+                    "--completion-style=detailed",
+                    "--function-arg-placeholders",
+                    "--fallback-style=llvm",
+                },
+            },
+
+            -- Python Language Server
+            pyright = {
+                settings = {
+                    python = {
+                        analysis = {
+                            typeCheckingMode = "basic", -- or "strict" if you prefer
+                            autoSearchPaths = true,
+                            useLibraryCodeForTypes = true,
+                            autoImportCompletions = true,
+                        },
                     },
                 },
             },
-            pyright = {},
-            marksman = {},
+
+            -- Markdown Language Server
+            marksman = {
+                settings = {
+                    marksman = {
+                        completion = {
+                            wiki = {
+                                style = "title", -- or "path"
+                            },
+                        },
+                    },
+                },
+            },
+
+            -- Lua Language Server (optimized for Neovim)
             lua_ls = {
                 settings = {
                     Lua = {
-                        runtime = { version = "LuaJIT" },
-                        diagnostics = { globals = { "vim" } },
+                        runtime = {
+                            version = "LuaJIT",
+                            path = vim.split(package.path, ";"),
+                        },
+                        diagnostics = {
+                            globals = { "vim" },
+                            disable = { "missing-fields" }, -- Reduce noise
+                        },
                         workspace = {
                             library = vim.api.nvim_get_runtime_file("", true),
                             checkThirdParty = false,
+                            maxPreload = 100000,
+                            preloadFileSize = 10000,
                         },
                         telemetry = { enable = false },
+                        hint = {
+                            enable = true,
+                            arrayIndex = "Disable", -- Reduce visual noise
+                        },
+                        format = {
+                            enable = false, -- Use stylua via conform instead
+                        },
                     },
                 },
             },
         },
+
         -- Global LSP settings
         inlay_hints = { enabled = true },
         diagnostics = {
-            virtual_text = true,
+            virtual_text = {
+                spacing = 4,
+                source = "if_many",
+                prefix = "●",
+            },
             signs = true,
             underline = true,
             update_in_insert = false,
+            severity_sort = true,
             float = {
                 focusable = false,
                 style = "minimal",
@@ -51,9 +111,12 @@ return {
                 source = "always",
                 header = "",
                 prefix = "",
+                max_width = 80,
+                max_height = 20,
             },
         },
     },
+
     config = function(_, opts)
         -- Initialize Mason
         require("mason").setup()
@@ -92,13 +155,20 @@ return {
                 })
             end
 
-            -- Core LSP key mappings (non-telescope)
+            -- Core LSP key mappings
             bind("n", "K", vim.lsp.buf.hover, "Hover documentation")
             bind("n", "<leader>k", vim.lsp.buf.signature_help, "Signature help")
             bind("n", "<leader>lrn", vim.lsp.buf.rename, "Rename symbol")
             bind({ "n", "v" }, "<leader>la", vim.lsp.buf.code_action, "Code actions")
+
+            -- Use conform for formatting instead of LSP
             bind("n", "<leader>lf", function()
-                vim.lsp.buf.format({ async = true })
+                local conform_ok, conform = pcall(require, "conform")
+                if conform_ok then
+                    conform.format({ timeout_ms = 3000, lsp_format = "fallback" })
+                else
+                    vim.lsp.buf.format({ async = true })
+                end
             end, "Format document")
 
             -- Diagnostic key mappings
@@ -115,9 +185,10 @@ return {
                 )
             end, "Toggle inlay hints")
 
-            -- Document highlighting
+            -- Document highlighting (modern approach)
             if client.server_capabilities.documentHighlightProvider then
-                local group = vim.api.nvim_create_augroup("lsp_document_highlight", { clear = false })
+                local group =
+                    vim.api.nvim_create_augroup("lsp_document_highlight_" .. bufnr, { clear = true })
                 vim.api.nvim_create_autocmd({ "CursorHold", "CursorHoldI" }, {
                     group = group,
                     buffer = bufnr,
@@ -130,18 +201,10 @@ return {
                 })
             end
 
-            -- Auto-format on save
-            -- Use new API to check method support
-            if client:supports_method("textDocument/formatting") then
-                vim.api.nvim_create_autocmd("BufWritePre", {
-                    group = vim.api.nvim_create_augroup("lsp_format_on_save", { clear = false }),
-                    buffer = bufnr,
-                    callback = function()
-                        if vim.g.autoformat_enabled ~= false then
-                            vim.lsp.buf.format({ async = false })
-                        end
-                    end,
-                })
+            -- Disable LSP formatting in favor of conform.nvim
+            if client.name ~= "clangd" then -- Keep clangd formatting as fallback
+                client.server_capabilities.documentFormattingProvider = false
+                client.server_capabilities.documentRangeFormattingProvider = false
             end
         end
 
@@ -155,30 +218,18 @@ return {
             require("lspconfig")[server].setup(server_config)
         end
 
-        -- Modern LSP configuration - using new API
-        local lsp_config = {
-            handlers = {
-                ["textDocument/hover"] = function(err, result, ctx, config)
-                    config = config or {}
-                    config.border = "rounded"
-                    config.max_width = 80
-                    config.max_height = 20
-                    return vim.lsp.handlers["textDocument/hover"](err, result, ctx, config)
-                end,
-                ["textDocument/signatureHelp"] = function(err, result, ctx, config)
-                    config = config or {}
-                    config.border = "rounded"
-                    config.max_width = 80
-                    config.max_height = 20
-                    return vim.lsp.handlers["textDocument/signatureHelp"](err, result, ctx, config)
-                end,
-            },
-        }
+        -- Enhanced LSP handlers with better UI
+        vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, {
+            border = "rounded",
+            max_width = 80,
+            max_height = 20,
+        })
 
-        -- Apply configuration to all LSP clients
-        for server, _ in pairs(opts.servers) do
-            vim.lsp.config(server, lsp_config)
-        end
+        vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, {
+            border = "rounded",
+            max_width = 80,
+            max_height = 20,
+        })
 
         -- LSP server management commands
         vim.api.nvim_create_user_command("LspRestart", function()
@@ -191,10 +242,6 @@ return {
         vim.api.nvim_create_user_command("LspLog", function()
             vim.cmd("edit " .. vim.lsp.get_log_path())
         end, { desc = "Open LSP log file" })
-
-        vim.api.nvim_create_user_command("LspInfo", function()
-            vim.cmd("LspInfo")
-        end, { desc = "Show LSP information" })
 
         -- Global LSP settings
         vim.lsp.set_log_level("WARN")
