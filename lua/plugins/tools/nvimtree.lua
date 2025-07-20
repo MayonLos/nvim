@@ -153,6 +153,33 @@ return {
 
             api.config.mappings.default_on_attach(bufnr)
 
+            -- Merge: Add direct h/l and arrow key bindings
+            vim.keymap.set(
+                "n",
+                "h",
+                actions.aria_left,
+                { buffer = bufnr, noremap = true, silent = true, desc = "nvim-tree: Close node / Parent" }
+            )
+            vim.keymap.set(
+                "n",
+                "<Left>",
+                actions.aria_left,
+                { buffer = bufnr, noremap = true, silent = true, desc = "nvim-tree: Close node / Parent" }
+            )
+            vim.keymap.set(
+                "n",
+                "l",
+                actions.aria_right,
+                { buffer = bufnr, noremap = true, silent = true, desc = "nvim-tree: Open node" }
+            )
+            vim.keymap.set(
+                "n",
+                "<Right>",
+                actions.aria_right,
+                { buffer = bufnr, noremap = true, silent = true, desc = "nvim-tree: Open node" }
+            )
+
+            -- Existing keymaps from first config
             map("h", actions.aria_left, "Close node / Parent")
             map("l", actions.aria_right, "Open node")
             map("q", tree.close, "Close Tree")
@@ -179,12 +206,12 @@ return {
             ui = { confirm = { remove = true, trash = false } },
             sort_by = sort_by,
             on_attach = on_attach,
-            sync_root_with_cwd = true, -- Auto-lock to current file's directory
-            respect_buf_cwd = true, -- Respect buffer's cwd for root
+            sync_root_with_cwd = true,
+            respect_buf_cwd = true,
             update_focused_file = {
-                enable = true, -- Enable auto-locking to current file
-                update_root = true, -- Update root to current file's directory
-                ignore_list = {}, -- Files to ignore
+                enable = true,
+                update_root = true,
+                ignore_list = {},
             },
         })
 
