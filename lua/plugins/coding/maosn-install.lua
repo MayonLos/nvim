@@ -12,7 +12,9 @@ return {
 
 			-- ✅ Formatters (focused on your languages)
 			"stylua", -- Lua formatter
-			"ruff", -- Modern Python formatter/linter (replaces black+isort)
+			"isort", -- python formatter
+			"black", --python formatter
+			"ruff", -- Modern Python formatter/linter
 			"clang-format", -- C/C++ formatter
 			"prettier", -- Markdown formatter
 			"prettierd", -- Faster prettier daemon
