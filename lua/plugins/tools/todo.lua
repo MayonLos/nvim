@@ -16,7 +16,6 @@ return {
 			end,
 			desc = "Prev todo comment",
 		},
-		{ "<leader>fd", "<cmd>TodoTelescope<CR>", desc = "Todo Telescope" },
 		{ "<leader>xd", "<cmd>TodoTrouble<CR>", desc = "Todo Trouble" },
 	},
 	dependencies = { "nvim-lua/plenary.nvim" },
