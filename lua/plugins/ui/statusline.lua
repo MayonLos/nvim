@@ -291,23 +291,6 @@ return {
                 hl = { fg = colors.overlay2 },
             }
 
-            -- FileFormat component: Displays file format (unix/dos/mac)
-            local FileFormat = {
-                static = {
-                    format_icons = {
-                        unix = "󰻀", -- Unix format icon
-                        dos = "󰍲", -- DOS format icon
-                        mac = "󰍴", -- Mac format icon
-                    },
-                },
-                provider = function(self)
-                    local format = bo.fileformat
-                    local icon = self.format_icons[format] or "󰈔"
-                    return string.format("%s %s", icon, format) -- Display format with icon
-                end,
-                hl = { fg = colors.overlay2 },
-            }
-
             -- Position component: Displays cursor position and percentage
             local Position = {
                 init = function(self)
@@ -384,6 +367,32 @@ return {
                 hl = { fg = colors.blue },
             }
 
+            -- CodeCompanion
+            local CodeCompanion = {
+                static = {
+                    processing = false,
+                },
+                update = {
+                    "User",
+                    pattern = "CodeCompanionRequest*",
+                    callback = function(self, args)
+                        if args.match == "CodeCompanionRequestStarted" then
+                            self.processing = true
+                        elseif args.match == "CodeCompanionRequestFinished" then
+                            self.processing = false
+                        end
+                        vim.cmd("redrawstatus")
+                    end,
+                },
+                {
+                    condition = function(self)
+                        return self.processing
+                    end,
+                    provider = " ",
+                    hl = { fg = "yellow" },
+                },
+            }
+
             -- Main StatusLine: Combines all components
             local StatusLine = {
                 hl = function()
@@ -401,11 +410,10 @@ return {
                 -- Center alignment
                 Align,
                 -- Right section
+                CodeCompanion,
                 LSPClients,
-                Separator,
+                Spacer,
                 FileEncoding,
-                Space,
-                FileFormat,
                 Separator,
                 Position,
                 Spacer,
