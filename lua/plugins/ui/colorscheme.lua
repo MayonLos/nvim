@@ -76,6 +76,7 @@ return {
 					-- UI enhancements
 					telescope = {
 						enabled = true,
+						-- style = "classic", "nvchad" or "nvchad_outlined"
 					},
 					which_key = true,
 
