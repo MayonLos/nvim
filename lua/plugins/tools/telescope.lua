@@ -1,5 +1,3 @@
--- Telescope.nvim configuration (optimized & beautified)
--- Plugin: nvim-telescope/telescope.nvim @ tag 0.1.8
 return {
 	"nvim-telescope/telescope.nvim",
 	tag = "0.1.8",
