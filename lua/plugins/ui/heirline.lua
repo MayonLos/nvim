@@ -746,7 +746,7 @@ return {
 
 			-- Quick buffer switching with numbers
 			for i = 1, 9 do
-				vim.keymap.set("n", "<leader>" .. i, function()
+				vim.keymap.set("n", "<leader>b" .. i, function()
 					local buffers = get_bufs()
 					if buffers[i] and api.nvim_buf_is_valid(buffers[i]) then
 						api.nvim_win_set_buf(0, buffers[i])

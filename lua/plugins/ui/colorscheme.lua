@@ -11,7 +11,7 @@ return {
 					light = "latte",
 					dark = "frappe",
 				},
-				transparent_background = false,
+				transparent_background = true,
 				show_end_of_buffer = false,
 				term_colors = true,
 				dim_inactive = {
@@ -46,10 +46,6 @@ return {
 					nvimtree = true,
 					treesitter = true,
 					notify = false,
-					mini = {
-						enabled = true,
-						indentscope_color = "",
-					},
 
 					-- LSP and diagnostics
 					native_lsp = {
@@ -74,10 +70,7 @@ return {
 					},
 
 					-- UI enhancements
-					telescope = {
-						enabled = true,
-						-- style = "classic", "nvchad" or "nvchad_outlined"
-					},
+					telescope = { enabled = true, style = "nvchad_outlined" },
 					which_key = true,
 
 					-- Development tools

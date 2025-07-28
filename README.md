@@ -26,7 +26,7 @@
 ```bash
 sudo pacman -S --needed fd ripgrep unzip base-devel git \
   luarocks python python-pip nodejs npm \
-  xclip curl make gcc
+  xclip curl make gcc oniguruma
 
 # Nerd Font（如使用 JetBrainsMono）
 yay -S ttf-jetbrains-mono-nerd
