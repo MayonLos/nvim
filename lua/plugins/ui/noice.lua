@@ -4,7 +4,15 @@ return {
 		event = "VeryLazy",
 		dependencies = {
 			"MunifTanjim/nui.nvim",
-			{ "rcarriga/nvim-notify", lazy = true },
+			{
+				"rcarriga/nvim-notify",
+				lazy = true,
+				config = function()
+					require("notify").setup {
+						background_colour = "#000000",
+					}
+				end,
+			},
 		},
 		opts = {
 			lsp = {

@@ -1465,8 +1465,6 @@ function M.setup(user_config)
 			end,
 		})
 	end
-
-	utils.notify("CMake plugin loaded successfully", vim.log.levels.INFO, "CMake")
 end
 
 -- ========================================
