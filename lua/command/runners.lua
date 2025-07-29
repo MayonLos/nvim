@@ -764,10 +764,10 @@ function M.setup(user_config)
 	-- Create autogroup
 	vim.api.nvim_create_augroup("CodeRunner", { clear = true })
 
-	-- Success notification
-	vim.defer_fn(function()
-		M._notify("CodeRunner loaded successfully", vim.log.levels.INFO, M.config.ui.icons.success)
-	end, 100)
+	-- -- Success notification
+	-- vim.defer_fn(function()
+	-- 	M._notify("CodeRunner loaded successfully", vim.log.levels.INFO, M.config.ui.icons.success)
+	-- end, 100)
 end
 
 return M
