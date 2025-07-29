@@ -35,6 +35,13 @@ return {
 				return ok and result or default
 			end
 
+			-- Get window width safely
+			local function get_win_width(winid)
+				return safe_call(function()
+					return api.nvim_win_is_valid(winid) and api.nvim_win_get_width(winid) or 0
+				end, 0)
+			end
+
 			-- ========================================
 			-- BASIC COMPONENTS
 			-- ========================================
@@ -48,7 +55,7 @@ return {
 			}
 
 			-- ========================================
-			-- STATUS LINE COMPONENTS
+			-- STATUS LINE COMPONENTS (keeping existing ones)
 			-- ========================================
 
 			-- Mode component
@@ -364,13 +371,101 @@ return {
 			}
 
 			-- ========================================
-			-- TABLINE COMPONENTS
+			-- IMPROVED TABLINE COMPONENTS
 			-- ========================================
 
-			-- Tabline file icon
+			-- Tabline offset for sidebar plugins like nvim-tree
+			local TablineOffset = {
+				condition = function(self)
+					-- Check first window in tabpage for sidebar plugins
+					local wins = api.nvim_tabpage_list_wins(0)
+					if #wins == 0 then
+						return false
+					end
+
+					local win = wins[1]
+					if not api.nvim_win_is_valid(win) then
+						return false
+					end
+
+					local bufnr = api.nvim_win_get_buf(win)
+					local filetype = safe_call(function()
+						return vim.bo[bufnr].filetype
+					end, "")
+					local buftype = safe_call(function()
+						return vim.bo[bufnr].buftype
+					end, "")
+
+					self.winid = win
+
+					-- Handle different sidebar plugins
+					if filetype == "NvimTree" then
+						self.title = "󰙅 NvimTree"
+						self.hl_group = "NvimTreeNormal"
+						return true
+					elseif filetype == "neo-tree" then
+						self.title = "󰙅 Neo-tree"
+						self.hl_group = "NeoTreeNormal"
+						return true
+					elseif filetype == "CHADTree" then
+						self.title = "󰙅 CHADTree"
+						self.hl_group = "CHADTreeNormal"
+						return true
+					elseif filetype == "nerdtree" then
+						self.title = "󰙅 NERDTree"
+						self.hl_group = "NERDTree"
+						return true
+					elseif filetype == "Outline" then
+						self.title = "󰙅 Outline"
+						self.hl_group = "OutlineNormal"
+						return true
+					elseif filetype == "tagbar" then
+						self.title = "󰙅 Tagbar"
+						self.hl_group = "TagbarNormal"
+						return true
+					elseif buftype == "terminal" then
+						self.title = "󰓫 Terminal"
+						self.hl_group = "StatusLine"
+						return true
+					end
+
+					return false
+				end,
+
+				provider = function(self)
+					local width = get_win_width(self.winid)
+					if width == 0 then
+						return ""
+					end
+
+					local title = self.title
+					local title_len = vim.fn.strdisplaywidth(title)
+
+					-- Calculate padding to center the title
+					local pad = math.max(0, math.floor((width - title_len) / 2))
+					local right_pad = math.max(0, width - title_len - pad)
+
+					return string.rep(" ", pad) .. title .. string.rep(" ", right_pad)
+				end,
+
+				hl = function(self)
+					-- Use appropriate highlight group based on focus
+					if api.nvim_get_current_win() == self.winid then
+						return { bg = colors.surface0, fg = colors.text, bold = true }
+					else
+						return { bg = colors.base, fg = colors.overlay1 }
+					end
+				end,
+
+				update = { "WinEnter", "BufEnter", "WinResized" },
+			}
+
+			-- Optimized tabline file icon
 			local TablineFileIcon = {
 				init = function(self)
-					self.filename = api.nvim_buf_get_name(self.bufnr)
+					self.filename = safe_call(function()
+						return api.nvim_buf_get_name(self.bufnr)
+					end, "")
 					self.extension = fn.fnamemodify(self.filename, ":e")
 				end,
 				provider = function(self)
@@ -389,15 +484,22 @@ return {
 				end,
 			}
 
-			-- Tabline file name
+			-- Improved tabline file name with better truncation
 			local TablineFileName = {
 				provider = function(self)
 					local filename = self.filename
 					filename = filename == "" and "[No Name]" or fn.fnamemodify(filename, ":t")
 
-					-- Truncate long filenames
-					if #filename > 25 then
-						filename = filename:sub(1, 22) .. "..."
+					-- Smart truncation based on available space
+					local max_len = 25
+					if vim.o.columns < 120 then
+						max_len = 15
+					elseif vim.o.columns > 200 then
+						max_len = 35
+					end
+
+					if #filename > max_len then
+						filename = filename:sub(1, max_len - 3) .. "..."
 					end
 
 					return filename
@@ -411,74 +513,100 @@ return {
 				end,
 			}
 
-			-- Tabline file flags
+			-- Enhanced tabline file flags
 			local TablineFileFlags = {
 				{
 					condition = function(self)
-						return api.nvim_get_option_value("modified", { buf = self.bufnr })
+						return safe_call(function()
+							return api.nvim_get_option_value("modified", { buf = self.bufnr })
+						end, false)
 					end,
-					provider = " [+]",
+					provider = " 󰜄",
 					hl = { fg = colors.green, bold = true },
 				},
 				{
 					condition = function(self)
-						return not api.nvim_get_option_value("modifiable", { buf = self.bufnr })
-							or api.nvim_get_option_value("readonly", { buf = self.bufnr })
+						local not_modifiable = safe_call(function()
+							return not api.nvim_get_option_value("modifiable", { buf = self.bufnr })
+						end, false)
+						local readonly = safe_call(function()
+							return api.nvim_get_option_value("readonly", { buf = self.bufnr })
+						end, false)
+						return not_modifiable or readonly
 					end,
 					provider = function(self)
-						if api.nvim_get_option_value("buftype", { buf = self.bufnr }) == "terminal" then
+						local buftype = safe_call(function()
+							return api.nvim_get_option_value("buftype", { buf = self.bufnr })
+						end, "")
+						if buftype == "terminal" then
 							return " 󰓫"
 						else
-							return " "
+							return " 󰌾"
 						end
 					end,
 					hl = { fg = colors.peach },
 				},
 			}
 
-			-- Buffer picker
+			-- Buffer picker with improved label selection
 			local TablinePicker = {
 				condition = function(self)
 					return self._show_picker
 				end,
 				init = function(self)
-					local bufname = api.nvim_buf_get_name(self.bufnr)
+					local bufname = safe_call(function()
+						return api.nvim_buf_get_name(self.bufnr)
+					end, "")
 					bufname = fn.fnamemodify(bufname, ":t")
+					if bufname == "" then
+						bufname = "unnamed"
+					end
+
+					-- Try to find a unique label
 					local label = bufname:sub(1, 1):upper()
 					local i = 2
-					while self._picker_labels[label] do
-						if i > #bufname then
-							break
-						end
+					while self._picker_labels[label] and i <= #bufname do
 						label = bufname:sub(i, i):upper()
 						i = i + 1
 					end
+
+					-- If no unique letter found, use numbers
+					if self._picker_labels[label] then
+						local num = 1
+						while self._picker_labels[tostring(num)] do
+							num = num + 1
+						end
+						label = tostring(num)
+					end
+
 					self._picker_labels[label] = self.bufnr
 					self.label = label
 				end,
 				provider = function(self)
-					return self.label
+					return " " .. self.label .. " "
 				end,
-				hl = { fg = colors.red, bg = colors.yellow, bold = true },
+				hl = { fg = colors.base, bg = colors.red, bold = true },
 			}
 
-			-- Tabline file name block
+			-- Main tabline file name block
 			local TablineFileNameBlock = {
 				init = function(self)
-					self.filename = api.nvim_buf_get_name(self.bufnr)
+					self.filename = safe_call(function()
+						return api.nvim_buf_get_name(self.bufnr)
+					end, "")
 				end,
 				hl = function(self)
 					if self.is_active then
-						return "TabLineSel"
+						return { bg = colors.surface0, fg = colors.text }
 					else
-						return "TabLine"
+						return { bg = colors.base, fg = colors.overlay1 }
 					end
 				end,
 				on_click = {
 					callback = function(_, minwid, _, button)
 						vim.schedule(function()
-							if button == "m" then
-								safe_call(function()
+							safe_call(function()
+								if button == "m" then -- Middle click to close
 									if api.nvim_buf_is_valid(minwid) and api.nvim_buf_is_loaded(minwid) then
 										local modified = api.nvim_get_option_value("modified", { buf = minwid })
 										if modified then
@@ -499,14 +627,12 @@ return {
 										end
 										vim.cmd.redrawtabline()
 									end
-								end)
-							else
-								safe_call(function()
+								else -- Left click to switch
 									if api.nvim_buf_is_valid(minwid) then
 										api.nvim_win_set_buf(0, minwid)
 									end
-								end)
-							end
+								end
+							end)
 						end)
 					end,
 					minwid = function(self)
@@ -514,49 +640,114 @@ return {
 					end,
 					name = "heirline_tabline_buffer_callback",
 				},
+				{ provider = " " },
 				TablineFileIcon,
 				{ provider = " " },
 				TablineFileName,
 				TablineFileFlags,
+				{ provider = " " },
 			}
 
-			-- Final tabline buffer block
+			-- Close button for buffers
+			local TablineCloseButton = {
+				condition = function(self)
+					local modified = safe_call(function()
+						return api.nvim_get_option_value("modified", { buf = self.bufnr })
+					end, false)
+					return not modified
+				end,
+				{
+					provider = "󰅖 ",
+					hl = { fg = colors.overlay1 },
+					on_click = {
+						callback = function(_, minwid)
+							vim.schedule(function()
+								safe_call(function()
+									api.nvim_buf_delete(minwid, { force = false })
+									vim.cmd.redrawtabline()
+								end)
+							end)
+						end,
+						minwid = function(self)
+							return self.bufnr
+						end,
+						name = "heirline_tabline_close_buffer_callback",
+					},
+				},
+			}
+
+			-- Final tabline buffer block with improved styling
 			local TablineBufferBlock = utils.surround({ "", "" }, function(self)
 				if self.is_active then
-					return utils.get_highlight("TabLineSel").bg
+					return colors.surface0
 				else
-					return utils.get_highlight("TabLine").bg
+					return colors.base
 				end
 			end, {
 				TablinePicker,
 				TablineFileNameBlock,
+				TablineCloseButton,
 			})
 
 			-- ========================================
-			-- BUFFER MANAGEMENT
+			-- BUFFER MANAGEMENT (Enhanced)
 			-- ========================================
 
 			local buflist_cache = {}
 
+			-- Improved buffer filtering
 			local function get_bufs()
 				return safe_call(function()
 					return vim.tbl_filter(function(bufnr)
-						return api.nvim_buf_is_valid(bufnr)
-							and api.nvim_get_option_value("buflisted", { buf = bufnr })
-							and api.nvim_buf_get_name(bufnr) ~= ""
+						if not api.nvim_buf_is_valid(bufnr) then
+							return false
+						end
+
+						local buftype = api.nvim_get_option_value("buftype", { buf = bufnr })
+						local filetype = api.nvim_get_option_value("filetype", { buf = bufnr })
+						local buflisted = api.nvim_get_option_value("buflisted", { buf = bufnr })
+
+						-- Filter out special buffers
+						if buftype ~= "" and buftype ~= "terminal" then
+							return false
+						end
+
+						-- Filter out certain filetypes
+						local excluded_filetypes = {
+							"help",
+							"alpha",
+							"dashboard",
+							"NvimTree",
+							"Trouble",
+							"lir",
+							"Outline",
+							"spectre_panel",
+						}
+
+						for _, ft in ipairs(excluded_filetypes) do
+							if filetype == ft then
+								return false
+							end
+						end
+
+						return buflisted
 					end, api.nvim_list_bufs())
 				end, {})
 			end
 
-			local BufferLine = utils.make_buflist(
-				TablineBufferBlock,
-				{ provider = "󰍞", hl = { fg = colors.overlay1 } },
-				{ provider = "󰍟", hl = { fg = colors.overlay1 } },
-				function()
-					return buflist_cache
-				end,
-				false
-			)
+			-- Create buffer line with offset support
+			local BufferLine = {
+				TablineOffset,
+				utils.make_buflist(
+					TablineBufferBlock,
+					{ provider = "󰍞 ", hl = { fg = colors.overlay1 } }, -- left truncation
+					{ provider = " 󰍟", hl = { fg = colors.overlay1 } }, -- right truncation
+					function()
+						return buflist_cache
+					end,
+					false -- no internal cache
+				),
+			}
 
 			-- ========================================
 			-- MAIN COMPONENTS
@@ -586,9 +777,7 @@ return {
 				ScrollBar,
 			}
 
-			local TabLine = {
-				BufferLine,
-			}
+			local TabLine = BufferLine
 
 			-- ========================================
 			-- HIGHLIGHT SETUP
@@ -640,18 +829,20 @@ return {
 			setup_highlights()
 
 			-- ========================================
-			-- AUTOCOMMANDS
+			-- ENHANCED AUTOCOMMANDS
 			-- ========================================
 
-			local augroup = api.nvim_create_augroup("HeirlineOptimized", { clear = true })
+			local augroup = api.nvim_create_augroup("HeirlineOptimizedTabline", { clear = true })
 
-			-- Buffer list management
+			-- Buffer list management with better performance
 			api.nvim_create_autocmd({ "VimEnter", "UIEnter", "BufAdd", "BufDelete", "BufWipeout" }, {
 				group = augroup,
 				callback = function()
 					vim.schedule(function()
 						safe_call(function()
 							local buffers = get_bufs()
+
+							-- Update cache efficiently
 							for i, v in ipairs(buffers) do
 								buflist_cache[i] = v
 							end
@@ -662,10 +853,20 @@ return {
 							-- Smart tabline visibility
 							if #buflist_cache > 1 then
 								go.showtabline = 2
-							else
+							elseif go.showtabline ~= 1 then
 								go.showtabline = 1
 							end
 						end)
+					end)
+				end,
+			})
+
+			-- Handle nvim-tree and other sidebar events
+			api.nvim_create_autocmd({ "BufEnter", "WinEnter", "WinClosed" }, {
+				group = augroup,
+				callback = function()
+					vim.schedule(function()
+						vim.cmd.redrawtabline()
 					end)
 				end,
 			})
@@ -676,6 +877,7 @@ return {
 				callback = function()
 					colors = require("catppuccin.palettes").get_palette(vim.g.catppuccin_flavour or "mocha")
 					setup_highlights()
+					vim.cmd.redrawtabline()
 				end,
 			})
 
@@ -694,36 +896,70 @@ return {
 				end,
 			})
 
-			-- Refresh on resize
+			-- Refresh on resize with debouncing
+			local resize_timer = nil
 			api.nvim_create_autocmd("VimResized", {
 				group = augroup,
 				callback = function()
-					vim.cmd "redrawstatus | redrawtabline"
+					if resize_timer then
+						fn.timer_stop(resize_timer)
+					end
+					resize_timer = fn.timer_start(100, function()
+						vim.schedule(function()
+							vim.cmd "redrawstatus | redrawtabline"
+						end)
+						resize_timer = nil
+					end)
+				end,
+			})
+
+			-- Handle window focus changes for better nvim-tree integration
+			api.nvim_create_autocmd({ "WinEnter", "WinLeave" }, {
+				group = augroup,
+				callback = function()
+					-- Small delay to ensure window states are updated
+					vim.schedule(function()
+						vim.defer_fn(function()
+							vim.cmd.redrawtabline()
+						end, 10)
+					end)
 				end,
 			})
 
 			-- ========================================
-			-- KEYMAPS
+			-- ENHANCED KEYMAPS
 			-- ========================================
 
-			-- Buffer picker
+			-- Improved buffer picker with error handling
 			vim.keymap.set("n", "gbp", function()
 				safe_call(function()
 					local tabline = require("heirline").tabline
 					if not tabline or not tabline._buflist or not tabline._buflist[1] then
+						vim.notify("No buffers available for picking", vim.log.levels.WARN)
 						return
 					end
 
 					local buflist = tabline._buflist[1]
+					if not buflist then
+						vim.notify("Buffer list not available", vim.log.levels.WARN)
+						return
+					end
+
 					buflist._picker_labels = {}
 					buflist._show_picker = true
 					vim.cmd.redrawtabline()
+
+					-- Show instruction
+					vim.notify("Pick buffer: press label key", vim.log.levels.INFO)
 
 					local char = fn.getcharstr():upper()
 					local bufnr = buflist._picker_labels[char]
 
 					if bufnr and api.nvim_buf_is_valid(bufnr) then
 						api.nvim_win_set_buf(0, bufnr)
+						vim.notify("Switched to buffer: " .. fn.fnamemodify(api.nvim_buf_get_name(bufnr), ":t"))
+					else
+						vim.notify("Invalid selection or buffer not found", vim.log.levels.WARN)
 					end
 
 					buflist._show_picker = false
@@ -731,8 +967,8 @@ return {
 				end)
 			end, { desc = "Pick buffer from tabline" })
 
-			-- Buffer navigation
-			local function safe_buffer_nav(cmd, fallback_msg)
+			-- Enhanced buffer navigation
+			local function safe_buffer_nav(cmd, desc)
 				return function()
 					safe_call(function()
 						vim.cmd(cmd)
@@ -742,17 +978,177 @@ return {
 
 			vim.keymap.set("n", "<leader>bn", safe_buffer_nav "bnext", { desc = "Next buffer" })
 			vim.keymap.set("n", "<leader>bp", safe_buffer_nav "bprevious", { desc = "Previous buffer" })
-			vim.keymap.set("n", "<leader>bd", safe_buffer_nav "bdelete", { desc = "Delete buffer" })
 
-			-- Quick buffer switching with numbers
+			-- Smart buffer delete that handles modified buffers
+			vim.keymap.set("n", "<leader>bd", function()
+				safe_call(function()
+					local bufnr = api.nvim_get_current_buf()
+					local modified = api.nvim_get_option_value("modified", { buf = bufnr })
+
+					if modified then
+						local filename = fn.fnamemodify(api.nvim_buf_get_name(bufnr), ":t")
+						if filename == "" then
+							filename = "[No Name]"
+						end
+
+						local choice = fn.confirm(
+							string.format("Buffer '%s' has unsaved changes. Save before closing?", filename),
+							"&Save and close\n&Close without saving\n&Cancel",
+							3
+						)
+
+						if choice == 1 then
+							vim.cmd "write"
+							vim.cmd "bdelete"
+						elseif choice == 2 then
+							vim.cmd "bdelete!"
+						end
+					else
+						vim.cmd "bdelete"
+					end
+				end)
+			end, { desc = "Delete buffer" })
+
+			-- Close all buffers except current
+			vim.keymap.set("n", "<leader>bo", function()
+				safe_call(function()
+					local current = api.nvim_get_current_buf()
+					local buffers = get_bufs()
+
+					for _, bufnr in ipairs(buffers) do
+						if bufnr ~= current and api.nvim_buf_is_valid(bufnr) then
+							local modified = api.nvim_get_option_value("modified", { buf = bufnr })
+							if not modified then
+								api.nvim_buf_delete(bufnr, { force = false })
+							end
+						end
+					end
+
+					vim.notify "Closed all unmodified buffers except current"
+				end)
+			end, { desc = "Close all other buffers" })
+
+			-- Quick buffer switching with numbers (1-9)
 			for i = 1, 9 do
 				vim.keymap.set("n", "<leader>b" .. i, function()
-					local buffers = get_bufs()
-					if buffers[i] and api.nvim_buf_is_valid(buffers[i]) then
-						api.nvim_win_set_buf(0, buffers[i])
-					end
+					safe_call(function()
+						local buffers = get_bufs()
+						if buffers[i] and api.nvim_buf_is_valid(buffers[i]) then
+							api.nvim_win_set_buf(0, buffers[i])
+							local filename = fn.fnamemodify(api.nvim_buf_get_name(buffers[i]), ":t")
+							if filename == "" then
+								filename = "[No Name]"
+							end
+							vim.notify("Switched to buffer " .. i .. ": " .. filename)
+						else
+							vim.notify("Buffer " .. i .. " not available", vim.log.levels.WARN)
+						end
+					end)
 				end, { desc = "Switch to buffer " .. i })
 			end
+
+			-- Cycle through buffers with Tab/Shift-Tab
+			vim.keymap.set("n", "<Tab>", safe_buffer_nav "bnext", { desc = "Next buffer" })
+			vim.keymap.set("n", "<S-Tab>", safe_buffer_nav "bprevious", { desc = "Previous buffer" })
+
+			-- Move buffers left/right in tabline
+			vim.keymap.set("n", "<leader>bmh", function()
+				safe_call(function()
+					local current_buf = api.nvim_get_current_buf()
+					local buffers = get_bufs()
+					local current_idx = nil
+
+					for i, bufnr in ipairs(buffers) do
+						if bufnr == current_buf then
+							current_idx = i
+							break
+						end
+					end
+
+					if current_idx and current_idx > 1 then
+						buffers[current_idx], buffers[current_idx - 1] = buffers[current_idx - 1], buffers[current_idx]
+						-- Update cache
+						for i, v in ipairs(buffers) do
+							buflist_cache[i] = v
+						end
+						vim.cmd.redrawtabline()
+						vim.notify "Moved buffer left"
+					end
+				end)
+			end, { desc = "Move buffer left" })
+
+			vim.keymap.set("n", "<leader>bml", function()
+				safe_call(function()
+					local current_buf = api.nvim_get_current_buf()
+					local buffers = get_bufs()
+					local current_idx = nil
+
+					for i, bufnr in ipairs(buffers) do
+						if bufnr == current_buf then
+							current_idx = i
+							break
+						end
+					end
+
+					if current_idx and current_idx < #buffers then
+						buffers[current_idx], buffers[current_idx + 1] = buffers[current_idx + 1], buffers[current_idx]
+						-- Update cache
+						for i, v in ipairs(buffers) do
+							buflist_cache[i] = v
+						end
+						vim.cmd.redrawtabline()
+						vim.notify "Moved buffer right"
+					end
+				end)
+			end, { desc = "Move buffer right" })
+
+			-- Toggle between last two buffers
+			vim.keymap.set("n", "<leader><leader>", function()
+				safe_call(function()
+					vim.cmd "buffer #"
+				end)
+			end, { desc = "Toggle last buffer" })
+
+			-- Force refresh tabline
+			vim.keymap.set("n", "<leader>br", function()
+				vim.cmd "redrawtabline"
+				vim.notify "Tabline refreshed"
+			end, { desc = "Refresh tabline" })
+
+			-- ========================================
+			-- COMMANDS
+			-- ========================================
+
+			-- Command to toggle tabline visibility
+			api.nvim_create_user_command("TablineToggle", function()
+				if go.showtabline == 0 then
+					go.showtabline = 2
+					vim.notify "Tabline enabled"
+				else
+					go.showtabline = 0
+					vim.notify "Tabline disabled"
+				end
+			end, { desc = "Toggle tabline visibility" })
+
+			-- Command to show buffer info
+			api.nvim_create_user_command("BufferInfo", function()
+				local buffers = get_bufs()
+				local info = {}
+
+				table.insert(info, "Buffer List:")
+				table.insert(info, string.rep("=", 50))
+
+				for i, bufnr in ipairs(buffers) do
+					local name = api.nvim_buf_get_name(bufnr)
+					local filename = name == "" and "[No Name]" or fn.fnamemodify(name, ":t")
+					local modified = api.nvim_get_option_value("modified", { buf = bufnr }) and " [+]" or ""
+					local current = bufnr == api.nvim_get_current_buf() and " (current)" or ""
+
+					table.insert(info, string.format("%d. %s%s%s", i, filename, modified, current))
+				end
+
+				vim.notify(table.concat(info, "\n"), vim.log.levels.INFO)
+			end, { desc = "Show buffer information" })
 		end,
 	},
 }
