@@ -2,7 +2,7 @@ return {
 	"neovim/nvim-lspconfig",
 	event = { "BufReadPre", "BufNewFile" },
 	dependencies = {
-		"mason.nvim", -- LSP server installer
+		"mason-org/mason.nvim", -- LSP server installer
 		"saghen/blink.cmp", -- Completion capabilities for LSP
 		"nvim-tree/nvim-web-devicons", -- Icons support
 	},

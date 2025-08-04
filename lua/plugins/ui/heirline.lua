@@ -9,9 +9,9 @@ return {
 			"catppuccin/nvim",
 		},
 		config = function()
-			-- =========================================================================
-			-- CORE IMPORTS & SETUP
-			-- =========================================================================
+			-- ═══════════════════════════════════════════════════════════════════════
+			-- ⚡ CORE IMPORTS & SETUP
+			-- ═══════════════════════════════════════════════════════════════════════
 
 			local heirline = require "heirline"
 			local conditions = require "heirline.conditions"
@@ -19,35 +19,45 @@ return {
 			local devicons = require "nvim-web-devicons"
 			local colors = require("catppuccin.palettes").get_palette(vim.g.catppuccin_flavour or "mocha")
 
-			-- Cache frequently used APIs for better performance
+			-- Performance optimizations: cache frequently used APIs
 			local api, fn, bo, go = vim.api, vim.fn, vim.bo, vim.go
 			local diagnostic = vim.diagnostic
 
-			-- =========================================================================
-			-- UTILITY FUNCTIONS
-			-- =========================================================================
+			-- ═══════════════════════════════════════════════════════════════════════
+			-- 🛠️  UTILITY FUNCTIONS
+			-- ═══════════════════════════════════════════════════════════════════════
 
 			local M = {}
 
-			-- Safe function execution with fallback
+			--- Safe function execution with fallback
+			--- @param func function Function to execute
+			--- @param fallback any Fallback value on error
+			--- @return any result Result or fallback
 			M.safe_call = function(func, fallback)
 				local ok, result = pcall(func)
 				return ok and result or fallback
 			end
 
-			-- Check if string is empty or nil
+			--- Check if string is empty or nil
+			--- @param str string|nil String to check
+			--- @return boolean empty True if empty/nil
 			M.is_empty = function(str)
 				return not str or str == ""
 			end
 
-			-- Get window width with validation
+			--- Get window width with validation
+			--- @param winid number Window ID
+			--- @return number width Window width or 0
 			M.get_win_width = function(winid)
 				return M.safe_call(function()
 					return api.nvim_win_is_valid(winid) and api.nvim_win_get_width(winid) or 0
 				end, 0)
 			end
 
-			-- Truncate text with ellipsis
+			--- Truncate text with ellipsis
+			--- @param str string Text to truncate
+			--- @param max_len number Maximum length
+			--- @return string truncated Truncated text
 			M.truncate = function(str, max_len)
 				if #str <= max_len then
 					return str
@@ -55,7 +65,9 @@ return {
 				return str:sub(1, max_len - 3) .. "…"
 			end
 
-			-- Get responsive max length based on window width
+			--- Get responsive max length based on window width
+			--- @param base_len number Base length
+			--- @return number length Responsive length
 			M.get_responsive_length = function(base_len)
 				local cols = vim.o.columns
 				if cols < 100 then
@@ -67,15 +79,16 @@ return {
 				end
 			end
 
-			-- =========================================================================
-			-- PRIMITIVE COMPONENTS
-			-- =========================================================================
+			-- ═══════════════════════════════════════════════════════════════════════
+			-- 🎨 PRIMITIVE COMPONENTS
+			-- ═══════════════════════════════════════════════════════════════════════
 
 			local Primitives = {
 				Space = { provider = " " },
 				Spacer = { provider = "  " },
 				TripleSpacer = { provider = "   " },
 				Align = { provider = "%=" },
+
 				Separator = {
 					provider = function()
 						return vim.o.columns > 120 and "  │  " or "  "
@@ -84,44 +97,65 @@ return {
 				},
 			}
 
-			-- =========================================================================
-			-- ENHANCED STATUS LINE COMPONENTS
-			-- =========================================================================
+			-- ═══════════════════════════════════════════════════════════════════════
+			-- 🚀 ENHANCED STATUS LINE COMPONENTS
+			-- ═══════════════════════════════════════════════════════════════════════
 
-			-- Modern mode component with better icons and colors
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 📍 Modern Mode Component                                             │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
 			local Mode = {
 				init = function(self)
 					self.mode = fn.mode()
 				end,
+
 				static = {
 					mode_map = {
+						-- Normal modes
 						n = { icon = "󰰆", name = "NORMAL", color = colors.blue },
+
+						-- Insert modes
 						i = { icon = "󰰅", name = "INSERT", color = colors.green },
+
+						-- Visual modes
 						v = { icon = "󰰈", name = "VISUAL", color = colors.mauve },
 						V = { icon = "󰰉", name = "V-LINE", color = colors.mauve },
 						["\22"] = { icon = "󰰊", name = "V-BLOCK", color = colors.mauve },
+
+						-- Command & Terminal
 						c = { icon = "󰞷", name = "COMMAND", color = colors.peach },
+						t = { icon = "󰓫", name = "TERMINAL", color = colors.yellow },
+
+						-- Replace modes
 						R = { icon = "󰛔", name = "REPLACE", color = colors.red },
 						r = { icon = "󰛔", name = "REPLACE", color = colors.red },
-						t = { icon = "󰓫", name = "TERMINAL", color = colors.yellow },
+
+						-- Select modes
 						s = { icon = "󰒅", name = "SELECT", color = colors.teal },
 						S = { icon = "󰒅", name = "S-LINE", color = colors.teal },
 						["\19"] = { icon = "󰒅", name = "S-BLOCK", color = colors.teal },
+
+						-- Operator pending
 						no = { icon = "󰰇", name = "O-PENDING", color = colors.red },
 						nov = { icon = "󰰇", name = "O-PENDING", color = colors.red },
 						noV = { icon = "󰰇", name = "O-PENDING", color = colors.red },
 						["no\22"] = { icon = "󰰇", name = "O-PENDING", color = colors.red },
+
+						-- Insert normal
 						niI = { icon = "󰰅", name = "NORMAL", color = colors.blue },
 						niR = { icon = "󰰅", name = "NORMAL", color = colors.blue },
 						niV = { icon = "󰰅", name = "NORMAL", color = colors.blue },
 						nt = { icon = "󰓫", name = "TERMINAL", color = colors.yellow },
 					},
 				},
+
 				provider = function(self)
 					local mode_info = self.mode_map[self.mode]
 						or { icon = "󰜅", name = self.mode:upper(), color = colors.surface1 }
 					return string.format("  %s %s  ", mode_info.icon, mode_info.name)
 				end,
+
 				hl = function(self)
 					local mode_info = self.mode_map[self.mode] or { color = colors.surface1 }
 					return {
@@ -130,10 +164,14 @@ return {
 						bold = true,
 					}
 				end,
+
 				update = { "ModeChanged", "BufEnter" },
 			}
 
-			-- Enhanced file info with better responsiveness
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 📄 Enhanced File Info Component                                     │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
 			local FileInfo = {
 				init = function(self)
 					self.filename = fn.expand "%:t"
@@ -143,8 +181,9 @@ return {
 					self.readonly = bo.readonly
 					self.buftype = bo.buftype
 				end,
+
+				-- File icon with dynamic coloring
 				{
-					-- File icon with dynamic coloring
 					provider = function(self)
 						if M.is_empty(self.filename) then
 							return self.buftype == "terminal" and "󰓫" or "󰈔"
@@ -152,6 +191,7 @@ return {
 						local icon = devicons.get_icon(self.filename, fn.expand "%:e", { default = true })
 						return icon or "󰈔"
 					end,
+
 					hl = function(self)
 						if self.buftype == "terminal" then
 							return { fg = colors.yellow }
@@ -164,15 +204,18 @@ return {
 						return { fg = icon_color or colors.text }
 					end,
 				},
+
 				Primitives.Space,
+
+				-- Filename with smart truncation
 				{
-					-- Filename with smart truncation
 					provider = function(self)
 						if M.is_empty(self.filename) then
 							return self.buftype == "terminal" and "Terminal" or "[Untitled]"
 						end
 						return M.truncate(self.filename, M.get_responsive_length(30))
 					end,
+
 					hl = function(self)
 						local base_hl = { bold = self.modified }
 						if self.buftype == "terminal" then
@@ -187,8 +230,9 @@ return {
 						return base_hl
 					end,
 				},
+
+				-- File status indicators
 				{
-					-- File status indicators
 					provider = function(self)
 						local indicators = {}
 						if self.modified then
@@ -202,6 +246,7 @@ return {
 						end
 						return #indicators > 0 and (" " .. table.concat(indicators, " ")) or ""
 					end,
+
 					hl = function(self)
 						if self.modified then
 							return { fg = colors.green, bold = true }
@@ -212,12 +257,17 @@ return {
 						end
 					end,
 				},
+
 				update = { "BufModifiedSet", "BufEnter", "BufWritePost", "FileType" },
 			}
 
-			-- Modern Git component with better formatting
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 🌿 Modern Git Component                                             │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
 			local Git = {
 				condition = conditions.is_git_repo,
+
 				init = function(self)
 					local gitsigns = vim.b.gitsigns_status_dict
 					if gitsigns then
@@ -231,6 +281,7 @@ return {
 						self.has_changes = false
 					end
 				end,
+
 				static = {
 					icons = {
 						branch = "󰘬",
@@ -239,22 +290,27 @@ return {
 						removed = "-",
 					},
 				},
+
+				-- Branch name
 				{
-					-- Branch name
 					condition = function(self)
 						return not M.is_empty(self.head)
 					end,
+
 					provider = function(self)
 						local branch = M.truncate(self.head, M.get_responsive_length(20))
 						return string.format(" %s %s", self.icons.branch, branch)
 					end,
+
 					hl = { fg = colors.lavender, bold = true },
 				},
+
+				-- Git changes
 				{
-					-- Git changes
 					condition = function(self)
 						return self.has_changes
 					end,
+
 					provider = function(self)
 						local changes = {}
 						if self.added > 0 then
@@ -268,20 +324,27 @@ return {
 						end
 						return " (" .. table.concat(changes, " ") .. ")"
 					end,
+
 					hl = { fg = colors.subtext1 },
 				},
+
 				update = { "User", pattern = "GitSignsUpdate" },
 			}
 
-			-- Enhanced diagnostics with severity-based styling
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 🩺 Enhanced Diagnostics Component                                   │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
 			local Diagnostics = {
 				condition = conditions.has_diagnostics,
+
 				init = function(self)
 					self.errors = #diagnostic.get(0, { severity = diagnostic.severity.ERROR })
 					self.warnings = #diagnostic.get(0, { severity = diagnostic.severity.WARN })
 					self.infos = #diagnostic.get(0, { severity = diagnostic.severity.INFO })
 					self.hints = #diagnostic.get(0, { severity = diagnostic.severity.HINT })
 				end,
+
 				static = {
 					icons = {
 						error = "󰅚",
@@ -290,6 +353,8 @@ return {
 						hint = "󰌶",
 					},
 				},
+
+				-- Error diagnostics
 				{
 					provider = function(self)
 						if self.errors == 0 then
@@ -299,6 +364,8 @@ return {
 					end,
 					hl = { fg = colors.red, bold = true },
 				},
+
+				-- Warning diagnostics
 				{
 					provider = function(self)
 						if self.warnings == 0 then
@@ -308,6 +375,8 @@ return {
 					end,
 					hl = { fg = colors.yellow, bold = true },
 				},
+
+				-- Info diagnostics
 				{
 					provider = function(self)
 						if self.infos == 0 then
@@ -317,6 +386,8 @@ return {
 					end,
 					hl = { fg = colors.sky, bold = true },
 				},
+
+				-- Hint diagnostics
 				{
 					provider = function(self)
 						if self.hints == 0 then
@@ -326,30 +397,41 @@ return {
 					end,
 					hl = { fg = colors.teal, bold = true },
 				},
+
 				update = { "DiagnosticChanged", "BufEnter" },
 			}
 
-			-- Modern search info component
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 🔍 Modern Search Info Component                                     │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
 			local SearchInfo = {
 				condition = function()
 					return vim.v.hlsearch ~= 0 and vim.fn.searchcount().total > 0
 				end,
+
 				init = function(self)
 					self.search = M.safe_call(fn.searchcount, {})
 				end,
+
 				provider = function(self)
 					if not self.search or not self.search.total or self.search.total == 0 then
 						return ""
 					end
 					return string.format(" 󰍉 %d/%d ", self.search.current or 0, self.search.total)
 				end,
+
 				hl = { fg = colors.peach, bg = colors.surface0, bold = true },
 				update = { "CmdlineChanged", "CursorMoved" },
 			}
 
-			-- Enhanced LSP clients with better formatting
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 🔧 Enhanced LSP Clients Component                                   │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
 			local LSPClients = {
 				condition = conditions.lsp_attached,
+
 				init = function(self)
 					local clients = {}
 					for _, client in pairs(vim.lsp.get_clients { bufnr = 0 }) do
@@ -359,9 +441,11 @@ return {
 					end
 					self.clients = clients
 				end,
+
 				static = {
 					icon = "󰒋",
 				},
+
 				provider = function(self)
 					if #self.clients == 0 then
 						return ""
@@ -370,20 +454,26 @@ return {
 					text = M.truncate(text, M.get_responsive_length(25))
 					return string.format(" %s %s", self.icon, text)
 				end,
+
 				hl = { fg = colors.sapphire, bold = true },
 				update = { "LspAttach", "LspDetach" },
 			}
 
-			-- Format status component
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 🎛️  Format Status Component                                         │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
 			local FormatStatus = {
 				condition = function()
 					local ok, _ = pcall(require, "conform")
 					return ok
 				end,
+
 				init = function(self)
 					self.global_enabled = vim.g.autoformat_enabled ~= false
 					self.buffer_enabled = vim.b.autoformat_enabled ~= false
 					self.is_enabled = self.global_enabled and self.buffer_enabled
+
 					local ok, conform = pcall(require, "conform")
 					if ok then
 						local formatters = conform.list_formatters(0)
@@ -397,6 +487,8 @@ return {
 						self.formatter_names = {}
 					end
 				end,
+
+				-- Format indicator
 				{
 					provider = function(self)
 						if not self.has_formatters then
@@ -410,6 +502,7 @@ return {
 							return " 🚫"
 						end
 					end,
+
 					hl = function(self)
 						if not self.has_formatters then
 							return { fg = colors.overlay1 }
@@ -422,6 +515,7 @@ return {
 							return { fg = colors.red, bold = true }
 						end
 					end,
+
 					on_click = {
 						callback = function()
 							vim.schedule(function()
@@ -437,20 +531,28 @@ return {
 						name = "format_toggle_click",
 					},
 				},
+
+				-- Formatter names
 				{
 					condition = function(self)
 						return self.has_formatters and vim.o.columns > 140 and #self.formatter_names > 0
 					end,
+
 					provider = function(self)
 						local names = table.concat(self.formatter_names, "·")
 						return M.truncate(names, 15)
 					end,
+
 					hl = { fg = colors.subtext1, italic = true },
 				},
+
 				update = { "BufEnter", "BufWritePost", "User" },
 			}
 
-			-- Smart format status that adapts to screen width
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 📱 Smart Format Status (Responsive)                                │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
 			local FormatStatusSmart = {
 				condition = function()
 					local ok, conform = pcall(require, "conform")
@@ -460,10 +562,15 @@ return {
 					local formatters = conform.list_formatters(0)
 					return #formatters > 0
 				end,
+
 				flexible = 2,
+
+				-- Full format status
 				{
 					FormatStatus,
 				},
+
+				-- Medium format status
 				{
 					{
 						provider = function()
@@ -475,6 +582,7 @@ return {
 								return (global_enabled and buffer_enabled) and " 🔧" or " 🚫"
 							end
 						end,
+
 						hl = function()
 							if vim.b.formatted_recently then
 								return { fg = colors.yellow, bold = true }
@@ -488,6 +596,8 @@ return {
 					},
 					{ provider = " " },
 				},
+
+				-- Minimal format status
 				{
 					provider = function()
 						if vim.b.formatted_recently then
@@ -498,6 +608,7 @@ return {
 							return (global_enabled and buffer_enabled) and "🔧" or "🚫"
 						end
 					end,
+
 					hl = function()
 						if vim.b.formatted_recently then
 							return { fg = colors.yellow }
@@ -511,7 +622,10 @@ return {
 				},
 			}
 
-			-- Responsive position component
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 📍 Responsive Position Component                                    │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
 			local Position = {
 				init = function(self)
 					local cursor = api.nvim_win_get_cursor(0)
@@ -521,7 +635,10 @@ return {
 					self.lines = lines
 					self.percent = lines > 0 and math.floor((self.row / lines) * 100) or 0
 				end,
+
 				flexible = 1,
+
+				-- Full position info
 				{
 					{
 						provider = function(self)
@@ -544,6 +661,8 @@ return {
 						hl = { fg = colors.subtext1 },
 					},
 				},
+
+				-- Medium position info
 				{
 					{
 						provider = function(self)
@@ -559,6 +678,8 @@ return {
 						hl = { fg = colors.green },
 					},
 				},
+
+				-- Minimal position info
 				{
 					provider = function(self)
 						return string.format("%d%%", self.percent)
@@ -567,11 +688,15 @@ return {
 				},
 			}
 
-			-- Enhanced scroll bar with smooth gradient
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 📊 Enhanced Scroll Bar Component                                    │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
 			local ScrollBar = {
 				static = {
 					sbar = { "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" },
 				},
+
 				provider = function(self)
 					local curr_line = api.nvim_win_get_cursor(0)[1]
 					local lines = api.nvim_buf_line_count(0)
@@ -581,10 +706,12 @@ return {
 					local i = math.min(math.floor((curr_line - 1) / lines * #self.sbar) + 1, #self.sbar)
 					return " " .. self.sbar[i]
 				end,
+
 				hl = function()
 					local curr_line = api.nvim_win_get_cursor(0)[1]
 					local lines = api.nvim_buf_line_count(0)
 					local ratio = lines > 0 and curr_line / lines or 0
+
 					if ratio < 0.2 then
 						return { fg = colors.green }
 					elseif ratio < 0.4 then
@@ -599,9 +726,13 @@ return {
 				end,
 			}
 
-			-- =========================================================================
-			-- ENHANCED TABLINE COMPONENTS
-			-- =========================================================================
+			-- ═══════════════════════════════════════════════════════════════════════
+			-- 📑 ENHANCED TABLINE COMPONENTS
+			-- ═══════════════════════════════════════════════════════════════════════
+
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 📂 Tabline Offset Component                                         │
+			-- └─────────────────────────────────────────────────────────────────────┘
 
 			local TablineOffset = {
 				condition = function(self)
@@ -609,10 +740,12 @@ return {
 					if #wins == 0 then
 						return false
 					end
+
 					local win = wins[1]
 					if not api.nvim_win_is_valid(win) then
 						return false
 					end
+
 					local bufnr = api.nvim_win_get_buf(win)
 					local filetype = M.safe_call(function()
 						return vim.bo[bufnr].filetype
@@ -620,7 +753,9 @@ return {
 					local buftype = M.safe_call(function()
 						return vim.bo[bufnr].buftype
 					end, "")
+
 					self.winid = win
+
 					local sidebars = {
 						NvimTree = { title = "󰙅 Explorer", hl = "NvimTreeNormal" },
 						["neo-tree"] = { title = "󰙅 Neo-tree", hl = "NeoTreeNormal" },
@@ -632,6 +767,7 @@ return {
 						vista = { title = "󰤌 Vista", hl = "VistaNormal" },
 						aerial = { title = "󰤌 Aerial", hl = "AerialNormal" },
 					}
+
 					if sidebars[filetype] then
 						self.title = sidebars[filetype].title
 						self.hl_group = sidebars[filetype].hl
@@ -641,19 +777,24 @@ return {
 						self.hl_group = "StatusLine"
 						return true
 					end
+
 					return false
 				end,
+
 				provider = function(self)
 					local width = M.get_win_width(self.winid)
 					if width == 0 then
 						return ""
 					end
+
 					local title = self.title
 					local title_len = vim.fn.strdisplaywidth(title)
 					local pad = math.max(0, math.floor((width - title_len) / 2))
 					local right_pad = math.max(0, width - title_len - pad)
+
 					return string.rep(" ", pad) .. title .. string.rep(" ", right_pad)
 				end,
+
 				hl = function(self)
 					local is_focused = api.nvim_get_current_win() == self.winid
 					return {
@@ -662,8 +803,13 @@ return {
 						bold = is_focused,
 					}
 				end,
+
 				update = { "WinEnter", "BufEnter", "WinResized" },
 			}
+
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 🎨 Tabline File Icon Component                                      │
+			-- └─────────────────────────────────────────────────────────────────────┘
 
 			local TablineFileIcon = {
 				init = function(self)
@@ -675,6 +821,7 @@ return {
 						return api.nvim_get_option_value("buftype", { buf = self.bufnr })
 					end, "")
 				end,
+
 				provider = function(self)
 					if self.buftype == "terminal" then
 						return "󰓫"
@@ -684,6 +831,7 @@ return {
 					local icon = devicons.get_icon(self.filename, self.extension, { default = true })
 					return icon or "󰈔"
 				end,
+
 				hl = function(self)
 					if self.buftype == "terminal" then
 						return { fg = colors.yellow }
@@ -695,22 +843,30 @@ return {
 				end,
 			}
 
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 📝 Tabline File Name Component                                      │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
 			local TablineFileName = {
 				provider = function(self)
 					local buftype = M.safe_call(function()
 						return api.nvim_get_option_value("buftype", { buf = self.bufnr })
 					end, "")
+
 					if buftype == "terminal" then
 						return "Terminal"
 					end
+
 					local filename = self.filename
 					if M.is_empty(filename) then
 						return "[Untitled]"
 					end
+
 					filename = fn.fnamemodify(filename, ":t")
 					local max_len = M.get_responsive_length(20)
 					return M.truncate(filename, max_len)
 				end,
+
 				hl = function(self)
 					return {
 						bold = self.is_active,
@@ -720,7 +876,12 @@ return {
 				end,
 			}
 
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 🏷️  Tabline File Flags Component                                   │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
 			local TablineFileFlags = {
+				-- Modified indicator
 				{
 					condition = function(self)
 						return M.safe_call(function()
@@ -730,6 +891,8 @@ return {
 					provider = " ●",
 					hl = { fg = colors.green, bold = true },
 				},
+
+				-- Readonly indicator
 				{
 					condition = function(self)
 						local readonly = M.safe_call(function()
@@ -745,24 +908,32 @@ return {
 				},
 			}
 
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 🎯 Tabline Picker Component                                         │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
 			local TablinePicker = {
 				condition = function(self)
 					return self._show_picker
 				end,
+
 				init = function(self)
 					local bufname = M.safe_call(function()
 						return api.nvim_buf_get_name(self.bufnr)
 					end, "")
+
 					bufname = fn.fnamemodify(bufname, ":t")
 					if M.is_empty(bufname) then
 						bufname = "untitled"
 					end
+
 					local label = bufname:sub(1, 1):upper()
 					local i = 2
 					while self._picker_labels[label] and i <= #bufname do
 						label = bufname:sub(i, i):upper()
 						i = i + 1
 					end
+
 					if self._picker_labels[label] then
 						local num = 1
 						while self._picker_labels[tostring(num)] do
@@ -770,14 +941,21 @@ return {
 						end
 						label = tostring(num)
 					end
+
 					self._picker_labels[label] = self.bufnr
 					self.label = label
 				end,
+
 				provider = function(self)
 					return "[" .. self.label .. "]"
 				end,
+
 				hl = { fg = colors.base, bg = colors.red, bold = true },
 			}
+
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 📄 Tabline File Name Block                                          │
+			-- └─────────────────────────────────────────────────────────────────────┘
 
 			local TablineFileNameBlock = {
 				init = function(self)
@@ -785,6 +963,7 @@ return {
 						return api.nvim_buf_get_name(self.bufnr)
 					end, "")
 				end,
+
 				hl = function(self)
 					if self.is_active then
 						return { bg = colors.surface0, fg = colors.text }
@@ -792,6 +971,7 @@ return {
 						return { bg = colors.base, fg = colors.subtext1 }
 					end
 				end,
+
 				on_click = {
 					callback = function(_, minwid, _, button)
 						vim.schedule(function()
@@ -823,6 +1003,7 @@ return {
 					end,
 					name = "heirline_tabline_callback",
 				},
+
 				{ provider = " " },
 				TablineFileIcon,
 				{ provider = " " },
@@ -831,6 +1012,10 @@ return {
 				{ provider = " " },
 			}
 
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 📊 Tabline Buffer Block                                             │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
 			local TablineBufferBlock = utils.surround({ "▎", "" }, function(self)
 				return self.is_active and colors.blue or colors.surface1
 			end, {
@@ -838,24 +1023,31 @@ return {
 				TablineFileNameBlock,
 			})
 
-			-- =========================================================================
-			-- BUFFER MANAGEMENT
-			-- =========================================================================
+			-- ═══════════════════════════════════════════════════════════════════════
+			-- 📋 BUFFER MANAGEMENT
+			-- ═══════════════════════════════════════════════════════════════════════
 
 			local buflist_cache = {}
 
+			--- Get filtered buffer list
+			--- @return table buffers List of valid buffer numbers
 			local function get_bufs()
 				return M.safe_call(function()
 					return vim.tbl_filter(function(bufnr)
 						if not api.nvim_buf_is_valid(bufnr) then
 							return false
 						end
+
 						local buftype = api.nvim_get_option_value("buftype", { buf = bufnr })
 						local filetype = api.nvim_get_option_value("filetype", { buf = bufnr })
 						local buflisted = api.nvim_get_option_value("buflisted", { buf = bufnr })
+
+						-- Only show normal and terminal buffers
 						if buftype ~= "" and buftype ~= "terminal" then
 							return false
 						end
+
+						-- Exclude specific filetypes
 						local excluded_filetypes = {
 							"help",
 							"alpha",
@@ -873,22 +1065,28 @@ return {
 							"notify",
 							"noice",
 						}
+
 						for _, ft in ipairs(excluded_filetypes) do
 							if filetype == ft then
 								return false
 							end
 						end
+
 						return buflisted
 					end, api.nvim_list_bufs())
 				end, {})
 			end
 
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 📑 Buffer Line Component                                            │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
 			local BufferLine = {
 				TablineOffset,
 				utils.make_buflist(
 					TablineBufferBlock,
-					{ provider = "󰍞 ", hl = { fg = colors.overlay1 } },
-					{ provider = " 󰍟", hl = { fg = colors.overlay1 } },
+					{ provider = "󰍞 ", hl = { fg = colors.overlay1 } }, -- Left truncation
+					{ provider = " 󰍟", hl = { fg = colors.overlay1 } }, -- Right truncation
 					function()
 						return buflist_cache
 					end,
@@ -896,14 +1094,16 @@ return {
 				),
 			}
 
-			-- =========================================================================
-			-- MAIN COMPONENTS ASSEMBLY
-			-- =========================================================================
+			-- ═══════════════════════════════════════════════════════════════════════
+			-- 🎯 MAIN COMPONENTS ASSEMBLY
+			-- ═══════════════════════════════════════════════════════════════════════
 
 			local StatusLine = {
 				hl = function()
 					return conditions.is_active() and "StatusLine" or "StatusLineNC"
 				end,
+
+				-- Left side components
 				Mode,
 				Primitives.Spacer,
 				FileInfo,
@@ -911,7 +1111,11 @@ return {
 				Diagnostics,
 				Primitives.Space,
 				SearchInfo,
+
+				-- Center alignment
 				Primitives.Align,
+
+				-- Right side components
 				LSPClients,
 				Primitives.Space,
 				FormatStatusSmart,
@@ -922,34 +1126,41 @@ return {
 
 			local TabLine = BufferLine
 
-			-- =========================================================================
-			-- HIGHLIGHT GROUPS SETUP
-			-- =========================================================================
+			-- ═══════════════════════════════════════════════════════════════════════
+			-- 🎨 HIGHLIGHT GROUPS SETUP
+			-- ═══════════════════════════════════════════════════════════════════════
 
+			--- Setup custom highlight groups
 			local function setup_highlights()
 				local highlights = {
+					-- Git highlights
 					GitAdded = { fg = colors.green, bold = true },
 					GitChanged = { fg = colors.yellow, bold = true },
 					GitRemoved = { fg = colors.red, bold = true },
+
+					-- Mode highlights
 					HeirlineModeNormal = { fg = colors.base, bg = colors.blue, bold = true },
 					HeirlineModeInsert = { fg = colors.base, bg = colors.green, bold = true },
 					HeirlineModeVisual = { fg = colors.base, bg = colors.mauve, bold = true },
 					HeirlineModeCommand = { fg = colors.base, bg = colors.peach, bold = true },
 					HeirlineModeReplace = { fg = colors.base, bg = colors.red, bold = true },
 					HeirlineModeTerminal = { fg = colors.base, bg = colors.yellow, bold = true },
+
+					-- Tabline highlights
 					HeirlineTablineActive = { fg = colors.text, bg = colors.surface0, bold = true },
 					HeirlineTablineInactive = { fg = colors.subtext1, bg = colors.base },
 					HeirlineTablineModified = { fg = colors.green, bold = true },
 					HeirlineTablineClose = { fg = colors.overlay1 },
 				}
+
 				for group, hl in pairs(highlights) do
 					api.nvim_set_hl(0, group, hl)
 				end
 			end
 
-			-- =========================================================================
-			-- HEIRLINE INITIALIZATION
-			-- =========================================================================
+			-- ═══════════════════════════════════════════════════════════════════════
+			-- ⚡ HEIRLINE INITIALIZATION
+			-- ═══════════════════════════════════════════════════════════════════════
 
 			heirline.setup {
 				statusline = StatusLine,
@@ -981,7 +1192,6 @@ return {
 								"qf",
 								"help",
 								"man",
-								"lspinfo",
 								"spectre_panel",
 								"startuptime",
 								"TelescopePrompt",
@@ -993,12 +1203,13 @@ return {
 
 			setup_highlights()
 
-			-- =========================================================================
-			-- ENHANCED AUTOCOMMANDS
-			-- =========================================================================
+			-- ═══════════════════════════════════════════════════════════════════════
+			-- 🔄 ENHANCED AUTOCOMMANDS
+			-- ═══════════════════════════════════════════════════════════════════════
 
 			local augroup = api.nvim_create_augroup("HeirlineEnhanced", { clear = true })
 
+			-- Format toggle event handler
 			api.nvim_create_autocmd({ "User" }, {
 				group = augroup,
 				pattern = "ConformFormatToggle",
@@ -1007,18 +1218,24 @@ return {
 						vim.cmd.redrawstatus()
 					end)
 				end,
+				desc = "Redraw status line on format toggle",
 			})
 
+			-- Format status indicator with timer
 			api.nvim_create_autocmd("BufWritePost", {
 				group = augroup,
 				callback = function()
 					if vim.b.autoformat_enabled ~= false and vim.g.autoformat_enabled ~= false then
 						vim.b.formatted_recently = true
 						vim.cmd.redrawstatus()
+
+						-- Clear timer if exists
 						if vim.b.format_timer then
 							vim.b.format_timer:stop()
 							vim.b.format_timer:close()
 						end
+
+						-- Set new timer to clear format indicator
 						local timer = vim.loop.new_timer()
 						timer:start(
 							5000,
@@ -1032,8 +1249,10 @@ return {
 						vim.b.format_timer = timer
 					end
 				end,
+				desc = "Show format indicator after save",
 			})
 
+			-- Buffer list management
 			api.nvim_create_autocmd({
 				"VimEnter",
 				"UIEnter",
@@ -1047,12 +1266,16 @@ return {
 					vim.schedule(function()
 						M.safe_call(function()
 							local buffers = get_bufs()
+
+							-- Update buffer cache
 							for i, bufnr in ipairs(buffers) do
 								buflist_cache[i] = bufnr
 							end
 							for i = #buffers + 1, #buflist_cache do
 								buflist_cache[i] = nil
 							end
+
+							-- Auto-show/hide tabline
 							if #buflist_cache > 1 then
 								go.showtabline = 2
 							elseif go.showtabline ~= 1 then
@@ -1061,8 +1284,10 @@ return {
 						end)
 					end)
 				end,
+				desc = "Update buffer list and tabline visibility",
 			})
 
+			-- Window and tabline refresh events
 			api.nvim_create_autocmd({ "BufEnter", "WinEnter", "WinClosed", "WinResized" }, {
 				group = augroup,
 				callback = function()
@@ -1070,8 +1295,10 @@ return {
 						vim.cmd.redrawtabline()
 					end)
 				end,
+				desc = "Refresh tabline on window events",
 			})
 
+			-- Color scheme change handler
 			api.nvim_create_autocmd("ColorScheme", {
 				group = augroup,
 				callback = function()
@@ -1081,22 +1308,27 @@ return {
 						vim.cmd "redrawstatus | redrawtabline"
 					end)
 				end,
+				desc = "Update colors on colorscheme change",
 			})
 
+			-- Performance optimizations for insert mode
 			api.nvim_create_autocmd("InsertEnter", {
 				group = augroup,
 				callback = function()
-					go.updatetime = 1000
+					go.updatetime = 1000 -- Slower updates in insert mode
 				end,
+				desc = "Reduce update frequency in insert mode",
 			})
 
 			api.nvim_create_autocmd("InsertLeave", {
 				group = augroup,
 				callback = function()
-					go.updatetime = 250
+					go.updatetime = 250 -- Normal update frequency
 				end,
+				desc = "Restore normal update frequency",
 			})
 
+			-- Debounced resize handler
 			local resize_timer = nil
 			api.nvim_create_autocmd("VimResized", {
 				group = augroup,
@@ -1111,8 +1343,10 @@ return {
 						resize_timer = nil
 					end)
 				end,
+				desc = "Debounced redraw on resize",
 			})
 
+			-- Focus change handler
 			api.nvim_create_autocmd({ "FocusGained", "FocusLost" }, {
 				group = augroup,
 				callback = function()
@@ -1120,11 +1354,16 @@ return {
 						vim.cmd.redrawtabline()
 					end)
 				end,
+				desc = "Refresh tabline on focus change",
 			})
 
-			-- =========================================================================
-			-- ENHANCED KEYMAPS & COMMANDS
-			-- =========================================================================
+			-- ═══════════════════════════════════════════════════════════════════════
+			-- ⌨️  ENHANCED KEYMAPS & COMMANDS
+			-- ═══════════════════════════════════════════════════════════════════════
+
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 🎛️  Format Toggle Commands                                          │
+			-- └─────────────────────────────────────────────────────────────────────┘
 
 			vim.api.nvim_create_user_command("FormatToggle", function()
 				vim.g.autoformat_enabled = not vim.g.autoformat_enabled
@@ -1151,6 +1390,10 @@ return {
 				vim.api.nvim_exec_autocmds("User", { pattern = "ConformFormatToggle" })
 			end, { desc = "Toggle autoformat for current buffer" })
 
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 🎯 Buffer Picker Keymap                                             │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
 			vim.keymap.set("n", "gbb", function()
 				M.safe_call(function()
 					local tabline = heirline.tabline
@@ -1158,11 +1401,14 @@ return {
 						vim.notify("No buffers available", vim.log.levels.WARN)
 						return
 					end
+
 					local buflist = tabline._buflist[1]
 					buflist._picker_labels = {}
 					buflist._show_picker = true
 					vim.cmd.redrawtabline()
+
 					vim.notify("󰒅 Buffer Picker: Press label key (ESC to cancel)", vim.log.levels.INFO)
+
 					local ok, char = pcall(fn.getcharstr)
 					if not ok or char == "\27" then
 						buflist._show_picker = false
@@ -1170,6 +1416,7 @@ return {
 						vim.notify("Buffer picker cancelled", vim.log.levels.INFO)
 						return
 					end
+
 					char = char:upper()
 					local bufnr = buflist._picker_labels[char]
 					if bufnr and api.nvim_buf_is_valid(bufnr) then
@@ -1180,19 +1427,32 @@ return {
 					else
 						vim.notify("Invalid selection", vim.log.levels.WARN)
 					end
+
 					buflist._show_picker = false
 					vim.cmd.redrawtabline()
 				end)
 			end, { desc = "󰒅 Pick buffer from tabline" })
 
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 🚀 Buffer Navigation Functions                                      │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
+			--- Create buffer navigation function with notification
+			--- @param cmd string Command to execute
+			--- @param desc string Description
+			--- @param icon string Icon for notification
+			--- @return function navigation_func Navigation function
 			local function create_buffer_nav(cmd, desc, icon)
 				return function()
 					M.safe_call(function()
 						local current_name = fn.fnamemodify(api.nvim_buf_get_name(0), ":t")
 						current_name = M.is_empty(current_name) and "[Untitled]" or current_name
+
 						vim.cmd(cmd)
+
 						local new_name = fn.fnamemodify(api.nvim_buf_get_name(0), ":t")
 						new_name = M.is_empty(new_name) and "[Untitled]" or new_name
+
 						if current_name ~= new_name then
 							vim.notify(string.format("%s %s", icon, new_name), vim.log.levels.INFO)
 						end
@@ -1200,6 +1460,7 @@ return {
 				end
 			end
 
+			-- Buffer navigation keymaps
 			vim.keymap.set(
 				"n",
 				"<Tab>",
@@ -1225,12 +1486,18 @@ return {
 				{ desc = "󰒮 Previous buffer" }
 			)
 
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 🗑️  Buffer Management Keymaps                                      │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
+			-- Close buffer with confirmation for modified files
 			vim.keymap.set("n", "<leader>bd", function()
 				M.safe_call(function()
 					local bufnr = api.nvim_get_current_buf()
 					local bufname = api.nvim_buf_get_name(bufnr)
 					local filename = M.is_empty(bufname) and "[Untitled]" or fn.fnamemodify(bufname, ":t")
 					local modified = api.nvim_get_option_value("modified", { buf = bufnr })
+
 					if modified then
 						local choices = {
 							"&Save and close",
@@ -1243,6 +1510,7 @@ return {
 							3,
 							"Question"
 						)
+
 						if choice == 1 then
 							vim.cmd "write"
 							vim.cmd "bdelete"
@@ -1258,11 +1526,13 @@ return {
 				end)
 			end, { desc = "󰆴 Close buffer" })
 
+			-- Close other buffers
 			vim.keymap.set("n", "<leader>bo", function()
 				M.safe_call(function()
 					local current = api.nvim_get_current_buf()
 					local buffers = get_bufs()
 					local closed_count = 0
+
 					for _, bufnr in ipairs(buffers) do
 						if bufnr ~= current and api.nvim_buf_is_valid(bufnr) then
 							local modified = api.nvim_get_option_value("modified", { buf = bufnr })
@@ -1272,10 +1542,16 @@ return {
 							end
 						end
 					end
+
 					vim.notify(string.format("󰆴 Closed %d buffer(s)", closed_count), vim.log.levels.INFO)
 				end)
 			end, { desc = "󰆴 Close other buffers" })
 
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 🔢 Numeric Buffer Navigation                                        │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
+			-- Quick buffer access with Ctrl+number
 			for i = 1, 9 do
 				vim.keymap.set("n", "<C-" .. i .. ">", function()
 					M.safe_call(function()
@@ -1292,22 +1568,31 @@ return {
 				end, { desc = string.format("󰒅 Switch to buffer %d", i) })
 			end
 
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ ↔️  Buffer Movement Keymaps                                         │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
+			-- Move buffer left
 			vim.keymap.set("n", "<leader>bmh", function()
 				M.safe_call(function()
 					local current_buf = api.nvim_get_current_buf()
 					local buffers = get_bufs()
 					local current_idx = nil
+
 					for i, bufnr in ipairs(buffers) do
 						if bufnr == current_buf then
 							current_idx = i
 							break
 						end
 					end
+
 					if current_idx and current_idx > 1 then
 						buffers[current_idx], buffers[current_idx - 1] = buffers[current_idx - 1], buffers[current_idx]
+
 						for i, v in ipairs(buffers) do
 							buflist_cache[i] = v
 						end
+
 						vim.cmd.redrawtabline()
 						vim.notify("󰒮 Moved buffer left", vim.log.levels.INFO)
 					else
@@ -1316,22 +1601,27 @@ return {
 				end)
 			end, { desc = "󰒮 Move buffer left" })
 
+			-- Move buffer right
 			vim.keymap.set("n", "<leader>bml", function()
 				M.safe_call(function()
 					local current_buf = api.nvim_get_current_buf()
 					local buffers = get_bufs()
 					local current_idx = nil
+
 					for i, bufnr in ipairs(buffers) do
 						if bufnr == current_buf then
 							current_idx = i
 							break
 						end
 					end
+
 					if current_idx and current_idx < #buffers then
 						buffers[current_idx], buffers[current_idx + 1] = buffers[current_idx + 1], buffers[current_idx]
+
 						for i, v in ipairs(buffers) do
 							buflist_cache[i] = v
 						end
+
 						vim.cmd.redrawtabline()
 						vim.notify("󰒭 Moved buffer right", vim.log.levels.INFO)
 					else
@@ -1340,6 +1630,11 @@ return {
 				end)
 			end, { desc = "󰒭 Move buffer right" })
 
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 🔄 Quick Buffer Toggle                                              │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
+			-- Toggle to last buffer
 			vim.keymap.set("n", "<leader><leader>", function()
 				M.safe_call(function()
 					vim.cmd "buffer #"
@@ -1349,16 +1644,21 @@ return {
 				end)
 			end, { desc = "󰒅 Toggle last buffer" })
 
+			-- Refresh interface
 			vim.keymap.set("n", "<leader>br", function()
 				vim.cmd "redrawstatus | redrawtabline"
 				vim.notify("󰑓 Interface refreshed", vim.log.levels.INFO)
 			end, { desc = "󰑓 Refresh interface" })
 
-			-- =========================================================================
-			-- ENHANCED COMMANDS
-			-- =========================================================================
+			-- ═══════════════════════════════════════════════════════════════════════
+			-- 📋 ENHANCED COMMANDS
+			-- ═══════════════════════════════════════════════════════════════════════
 
-			api.nvim_create_user_command("TablineToggle", function()
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 🔧 Interface Toggle Commands                                        │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
+			vim.api.nvim_create_user_command("TablineToggle", function()
 				if go.showtabline == 0 then
 					go.showtabline = 2
 					vim.notify("󰓩 Tabline enabled", vim.log.levels.INFO)
@@ -1368,10 +1668,15 @@ return {
 				end
 			end, { desc = "Toggle tabline visibility" })
 
-			api.nvim_create_user_command("BufferInfo", function()
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 📊 Buffer Information Command                                       │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
+			vim.api.nvim_create_user_command("BufferInfo", function()
 				local buffers = get_bufs()
 				local current_buf = api.nvim_get_current_buf()
 				local info = { "󰒅 Buffer Information", string.rep("─", 50) }
+
 				if #buffers == 0 then
 					table.insert(info, "No buffers available")
 				else
@@ -1383,16 +1688,21 @@ return {
 						local current = bufnr == current_buf and " 󰻃" or ""
 						local buftype = api.nvim_get_option_value("buftype", { buf = bufnr })
 						local type_indicator = buftype == "terminal" and " 󰓫" or ""
+
 						table.insert(
 							info,
 							string.format("%2d. %s%s%s%s%s", i, filename, modified, readonly, type_indicator, current)
 						)
 					end
 				end
+
 				table.insert(info, string.rep("─", 50))
 				table.insert(info, string.format("Total: %d buffer(s)", #buffers))
+
+				-- Create floating window
 				local buf = api.nvim_create_buf(false, true)
 				api.nvim_buf_set_lines(buf, 0, -1, false, info)
+
 				local width = math.max(60, math.min(vim.o.columns - 10, 80))
 				local height = math.min(#info + 2, vim.o.lines - 10)
 				local opts = {
@@ -1406,55 +1716,92 @@ return {
 					title = " Buffer Info ",
 					title_pos = "center",
 				}
+
 				local win = api.nvim_open_win(buf, true, opts)
 				api.nvim_set_option_value("filetype", "heirline-info", { buf = buf })
-				vim.keymap.set("n", "<Esc>", function()
+
+				-- Key mappings for the info window
+				local function close_window()
 					if api.nvim_win_is_valid(win) then
 						api.nvim_win_close(win, true)
 					end
-				end, { buffer = buf, nowait = true })
-				vim.keymap.set("n", "q", function()
-					if api.nvim_win_is_valid(win) then
-						api.nvim_win_close(win, true)
-					end
-				end, { buffer = buf, nowait = true })
+				end
+
+				vim.keymap.set("n", "<Esc>", close_window, { buffer = buf, nowait = true })
+				vim.keymap.set("n", "q", close_window, { buffer = buf, nowait = true })
 			end, { desc = "Show detailed buffer information" })
 
-			api.nvim_create_user_command("BufferCleanup", function()
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 🧹 Buffer Cleanup Command                                           │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
+			vim.api.nvim_create_user_command("BufferCleanup", function()
 				M.safe_call(function()
 					local buffers = get_bufs()
 					local current = api.nvim_get_current_buf()
 					local cleaned = 0
+
 					for _, bufnr in ipairs(buffers) do
 						if bufnr ~= current and api.nvim_buf_is_valid(bufnr) then
 							local modified = api.nvim_get_option_value("modified", { buf = bufnr })
 							local name = api.nvim_buf_get_name(bufnr)
+
+							-- Clean up empty buffers, temp files, and scratch buffers
 							if not modified and (M.is_empty(name) or name:match "^/tmp/" or name:match "scratch") then
 								api.nvim_buf_delete(bufnr, {})
 								cleaned = cleaned + 1
 							end
 						end
 					end
+
 					vim.notify(string.format("󰆴 Cleaned up %d buffer(s)", cleaned), vim.log.levels.INFO)
 				end)
 			end, { desc = "Clean up empty and scratch buffers" })
 
-			api.nvim_create_user_command("ThemeToggle", function()
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 🎨 Theme Toggle Command                                             │
+			-- └─────────────────────────────────────────────────────────────────────┘
+
+			vim.api.nvim_create_user_command("ThemeToggle", function()
 				local flavors = { "latte", "frappe", "macchiato", "mocha" }
 				local current = vim.g.catppuccin_flavour or "mocha"
 				local current_idx = 1
+
+				-- Find current flavor index
 				for i, flavor in ipairs(flavors) do
 					if flavor == current then
 						current_idx = i
 						break
 					end
 				end
+
+				-- Get next flavor
 				local next_idx = current_idx % #flavors + 1
 				local next_flavor = flavors[next_idx]
+
+				-- Apply new theme
 				vim.g.catppuccin_flavour = next_flavor
 				vim.cmd "colorscheme catppuccin"
 				vim.notify(string.format("󰏘 Theme: %s", next_flavor:gsub("^%l", string.upper)), vim.log.levels.INFO)
 			end, { desc = "Toggle between catppuccin themes" })
+
+			-- ═══════════════════════════════════════════════════════════════════════
+			-- 🎯 FINAL SETUP & INITIALIZATION
+			-- ═══════════════════════════════════════════════════════════════════════
+
+			-- Initial buffer list update
+			vim.schedule(function()
+				local buffers = get_bufs()
+				for i, bufnr in ipairs(buffers) do
+					buflist_cache[i] = bufnr
+				end
+			end)
+
+			-- Success notification
+			vim.notify("🚀 Heirline Enhanced loaded successfully!", vim.log.levels.INFO, {
+				title = "Heirline",
+				timeout = 2000,
+			})
 		end,
 	},
 }
