@@ -1,15 +1,15 @@
 return {
 	"stevearc/conform.nvim",
 	event = { "BufReadPre", "BufNewFile" },
-	cmd = { "ConformInfo", "Format", "FormatToggle", "FormatBufferToggle" },
+	cmd = { "ConformInfo", "Format", "FormatToggle", "FormatBufferToggle", "FormatStatus" },
 	keys = {
 		{
-			"<leader>lf",
+			"<leader>pf",
 			"<cmd>Format<cr>",
-			desc = "Format buffer",
+			desc = "Format buffer manually",
 		},
 		{
-			"<leader>lF",
+			"<leader>pi",
 			function()
 				require("conform").format {
 					formatters = { "injected" },
@@ -21,21 +21,26 @@ return {
 			desc = "Format injected languages",
 		},
 		{
-			"<leader>lt",
+			"<leader>pt",
 			"<cmd>FormatToggle<cr>",
-			desc = "Toggle autoformat globally",
+			desc = "Toggle global autoformat",
 		},
 		{
-			"<leader>lT",
+			"<leader>pb",
 			"<cmd>FormatBufferToggle<cr>",
-			desc = "Toggle autoformat for buffer",
+			desc = "Toggle buffer autoformat",
+		},
+		{
+			"<leader>ps",
+			"<cmd>FormatStatus<cr>",
+			desc = "Show format status",
 		},
 	},
-	dependencies = { "mason-org/mason.nvim" },
+	dependencies = { "mason.nvim" },
 	config = function()
 		local conform = require "conform"
 
-		-- Global autoformat state
+		-- Global autoformat state (enabled by default)
 		vim.g.autoformat_enabled = true
 
 		conform.setup {
@@ -213,8 +218,8 @@ return {
 		-- Enhanced user commands
 		vim.api.nvim_create_user_command("FormatToggle", function()
 			vim.g.autoformat_enabled = not vim.g.autoformat_enabled
-			local status = vim.g.autoformat_enabled and "enabled" or "disabled"
-			vim.notify(string.format("Global autoformat %s", status), vim.log.levels.INFO, { title = "conform.nvim" })
+			local status = vim.g.autoformat_enabled and "✅ enabled" or "❌ disabled"
+			vim.notify(string.format("Global autoformat %s", status), vim.log.levels.INFO, { title = "Conform Format" })
 		end, { desc = "Toggle global autoformat on save" })
 
 		vim.api.nvim_create_user_command("Format", function(args)
@@ -229,22 +234,26 @@ return {
 		})
 
 		vim.api.nvim_create_user_command("FormatBufferToggle", function()
+			-- Fix: Correctly initialize buffer state
 			if vim.b.autoformat_enabled == nil then
-				vim.b.autoformat_enabled = true -- Initialize if not set
+				vim.b.autoformat_enabled = true
 			end
 			vim.b.autoformat_enabled = not vim.b.autoformat_enabled
-			local status = vim.b.autoformat_enabled and "enabled" or "disabled"
-			vim.notify(string.format("Buffer autoformat %s", status), vim.log.levels.INFO, { title = "conform.nvim" })
+			local status = vim.b.autoformat_enabled and "✅ enabled" or "❌ disabled"
+			vim.notify(string.format("Buffer autoformat %s", status), vim.log.levels.INFO, { title = "Conform Format" })
 		end, { desc = "Toggle autoformat for current buffer" })
 
 		-- Show current formatting status
 		vim.api.nvim_create_user_command("FormatStatus", function()
-			local global_status = vim.g.autoformat_enabled and "enabled" or "disabled"
-			local buffer_status = vim.b.autoformat_enabled ~= false and "enabled" or "disabled"
+			local global_status = vim.g.autoformat_enabled and "✅ enabled" or "❌ disabled"
+			-- Fix: Correctly display buffer status
+			local buffer_enabled = vim.b.autoformat_enabled ~= false
+			local buffer_status = buffer_enabled and "✅ enabled" or "❌ disabled"
+
 			vim.notify(
-				string.format("Autoformat status:\nGlobal: %s\nBuffer: %s", global_status, buffer_status),
+				string.format("Autoformat Status:\n• Global: %s\n• Buffer: %s", global_status, buffer_status),
 				vim.log.levels.INFO,
-				{ title = "conform.nvim" }
+				{ title = "Conform Format" }
 			)
 		end, { desc = "Show current autoformat status" })
 	end,
