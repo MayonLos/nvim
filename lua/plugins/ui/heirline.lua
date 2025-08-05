@@ -23,6 +23,9 @@ return {
 			local api, fn, bo, go = vim.api, vim.fn, vim.bo, vim.go
 			local diagnostic = vim.diagnostic
 
+			-- Global timer storage to avoid storing in buffer variables
+			local format_timers = {}
+
 			-- ═══════════════════════════════════════════════════════════════════════
 			-- 🛠️  UTILITY FUNCTIONS
 			-- ═══════════════════════════════════════════════════════════════════════
@@ -1221,35 +1224,62 @@ return {
 				desc = "Redraw status line on format toggle",
 			})
 
-			-- Format status indicator with timer
+			-- Format status indicator with timer (FIXED)
 			api.nvim_create_autocmd("BufWritePost", {
 				group = augroup,
 				callback = function()
+					local bufnr = api.nvim_get_current_buf()
 					if vim.b.autoformat_enabled ~= false and vim.g.autoformat_enabled ~= false then
 						vim.b.formatted_recently = true
 						vim.cmd.redrawstatus()
 
-						-- Clear timer if exists
-						if vim.b.format_timer then
-							vim.b.format_timer:stop()
-							vim.b.format_timer:close()
+						-- Clear existing timer for this buffer
+						if format_timers[bufnr] then
+							format_timers[bufnr]:stop()
+							format_timers[bufnr]:close()
+							format_timers[bufnr] = nil
 						end
 
 						-- Set new timer to clear format indicator
-						local timer = vim.loop.new_timer()
-						timer:start(
-							5000,
-							0,
-							vim.schedule_wrap(function()
-								vim.b.formatted_recently = false
-								vim.cmd.redrawstatus()
-								timer:close()
-							end)
-						)
-						vim.b.format_timer = timer
+						local timer = vim.uv.new_timer()
+						if timer then
+							timer:start(
+								5000,
+								0,
+								vim.schedule_wrap(function()
+									-- Check if buffer is still valid
+									if api.nvim_buf_is_valid(bufnr) then
+										-- Use buffer-specific approach to set the variable
+										api.nvim_buf_call(bufnr, function()
+											vim.b.formatted_recently = false
+										end)
+										vim.cmd.redrawstatus()
+									end
+									if format_timers[bufnr] then
+										format_timers[bufnr]:close()
+										format_timers[bufnr] = nil
+									end
+								end)
+							)
+							format_timers[bufnr] = timer
+						end
 					end
 				end,
 				desc = "Show format indicator after save",
+			})
+
+			-- Clean up timers when buffers are deleted
+			api.nvim_create_autocmd("BufDelete", {
+				group = augroup,
+				callback = function()
+					local bufnr = tonumber(vim.fn.expand "<abuf>")
+					if bufnr and format_timers[bufnr] then
+						format_timers[bufnr]:stop()
+						format_timers[bufnr]:close()
+						format_timers[bufnr] = nil
+					end
+				end,
+				desc = "Clean up format timers on buffer delete",
 			})
 
 			-- Buffer list management
@@ -1334,14 +1364,24 @@ return {
 				group = augroup,
 				callback = function()
 					if resize_timer then
-						fn.timer_stop(resize_timer)
-					end
-					resize_timer = fn.timer_start(150, function()
-						vim.schedule(function()
-							vim.cmd "redrawstatus | redrawtabline"
-						end)
+						resize_timer:stop()
+						resize_timer:close()
 						resize_timer = nil
-					end)
+					end
+					resize_timer = vim.uv.new_timer()
+					if resize_timer then
+						resize_timer:start(
+							150,
+							0,
+							vim.schedule_wrap(function()
+								vim.cmd "redrawstatus | redrawtabline"
+								if resize_timer then
+									resize_timer:close()
+									resize_timer = nil
+								end
+							end)
+						)
+					end
 				end,
 				desc = "Debounced redraw on resize",
 			})
@@ -1801,6 +1841,21 @@ return {
 			vim.notify("🚀 Heirline Enhanced loaded successfully!", vim.log.levels.INFO, {
 				title = "Heirline",
 				timeout = 2000,
+			})
+
+			-- Clean up timers on exit
+			vim.api.nvim_create_autocmd("VimLeavePre", {
+				group = augroup,
+				callback = function()
+					for bufnr, timer in pairs(format_timers) do
+						if timer then
+							timer:stop()
+							timer:close()
+						end
+					end
+					format_timers = {}
+				end,
+				desc = "Clean up all timers on exit",
 			})
 		end,
 	},
