@@ -23,9 +23,6 @@ return {
 			local api, fn, bo, go = vim.api, vim.fn, vim.bo, vim.go
 			local diagnostic = vim.diagnostic
 
-			-- Global timer storage to avoid storing in buffer variables
-			local format_timers = {}
-
 			-- ═══════════════════════════════════════════════════════════════════════
 			-- 🛠️  UTILITY FUNCTIONS
 			-- ═══════════════════════════════════════════════════════════════════════
@@ -89,7 +86,6 @@ return {
 			local Primitives = {
 				Space = { provider = " " },
 				Spacer = { provider = "  " },
-				TripleSpacer = { provider = "   " },
 				Align = { provider = "%=" },
 
 				Separator = {
@@ -178,7 +174,6 @@ return {
 			local FileInfo = {
 				init = function(self)
 					self.filename = fn.expand "%:t"
-					self.filepath = fn.expand "%:p"
 					self.filetype = bo.filetype
 					self.modified = bo.modified
 					self.readonly = bo.readonly
@@ -290,7 +285,7 @@ return {
 						branch = "󰘬",
 						added = "󰐕",
 						changed = "󰜥",
-						removed = "-",
+						removed = "󰍴",
 					},
 				},
 
@@ -360,10 +355,7 @@ return {
 				-- Error diagnostics
 				{
 					provider = function(self)
-						if self.errors == 0 then
-							return ""
-						end
-						return string.format(" %s %d", self.icons.error, self.errors)
+						return self.errors > 0 and string.format(" %s %d", self.icons.error, self.errors) or ""
 					end,
 					hl = { fg = colors.red, bold = true },
 				},
@@ -371,10 +363,7 @@ return {
 				-- Warning diagnostics
 				{
 					provider = function(self)
-						if self.warnings == 0 then
-							return ""
-						end
-						return string.format(" %s %d", self.icons.warn, self.warnings)
+						return self.warnings > 0 and string.format(" %s %d", self.icons.warn, self.warnings) or ""
 					end,
 					hl = { fg = colors.yellow, bold = true },
 				},
@@ -382,10 +371,7 @@ return {
 				-- Info diagnostics
 				{
 					provider = function(self)
-						if self.infos == 0 then
-							return ""
-						end
-						return string.format(" %s %d", self.icons.info, self.infos)
+						return self.infos > 0 and string.format(" %s %d", self.icons.info, self.infos) or ""
 					end,
 					hl = { fg = colors.sky, bold = true },
 				},
@@ -393,10 +379,7 @@ return {
 				-- Hint diagnostics
 				{
 					provider = function(self)
-						if self.hints == 0 then
-							return ""
-						end
-						return string.format(" %s %d", self.icons.hint, self.hints)
+						return self.hints > 0 and string.format(" %s %d", self.icons.hint, self.hints) or ""
 					end,
 					hl = { fg = colors.teal, bold = true },
 				},
@@ -460,169 +443,6 @@ return {
 
 				hl = { fg = colors.sapphire, bold = true },
 				update = { "LspAttach", "LspDetach" },
-			}
-
-			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ 🎛️  Format Status Component                                         │
-			-- └─────────────────────────────────────────────────────────────────────┘
-
-			local FormatStatus = {
-				condition = function()
-					local ok, _ = pcall(require, "conform")
-					return ok
-				end,
-
-				init = function(self)
-					self.global_enabled = vim.g.autoformat_enabled ~= false
-					self.buffer_enabled = vim.b.autoformat_enabled ~= false
-					self.is_enabled = self.global_enabled and self.buffer_enabled
-
-					local ok, conform = pcall(require, "conform")
-					if ok then
-						local formatters = conform.list_formatters(0)
-						self.has_formatters = #formatters > 0
-						self.formatter_names = {}
-						for _, formatter in ipairs(formatters) do
-							table.insert(self.formatter_names, formatter.name)
-						end
-					else
-						self.has_formatters = false
-						self.formatter_names = {}
-					end
-				end,
-
-				-- Format indicator
-				{
-					provider = function(self)
-						if not self.has_formatters then
-							return ""
-						end
-						if vim.b.formatted_recently then
-							return " 🔄"
-						elseif self.is_enabled then
-							return " 🔧"
-						else
-							return " 🚫"
-						end
-					end,
-
-					hl = function(self)
-						if not self.has_formatters then
-							return { fg = colors.overlay1 }
-						end
-						if vim.b.formatted_recently then
-							return { fg = colors.yellow, bold = true }
-						elseif self.is_enabled then
-							return { fg = colors.green, bold = true }
-						else
-							return { fg = colors.red, bold = true }
-						end
-					end,
-
-					on_click = {
-						callback = function()
-							vim.schedule(function()
-								if vim.g.autoformat_enabled then
-									vim.g.autoformat_enabled = false
-									vim.notify("🚫 Global autoformat disabled", vim.log.levels.WARN)
-								else
-									vim.g.autoformat_enabled = true
-									vim.notify("🔧 Global autoformat enabled", vim.log.levels.INFO)
-								end
-							end)
-						end,
-						name = "format_toggle_click",
-					},
-				},
-
-				-- Formatter names
-				{
-					condition = function(self)
-						return self.has_formatters and vim.o.columns > 140 and #self.formatter_names > 0
-					end,
-
-					provider = function(self)
-						local names = table.concat(self.formatter_names, "·")
-						return M.truncate(names, 15)
-					end,
-
-					hl = { fg = colors.subtext1, italic = true },
-				},
-
-				update = { "BufEnter", "BufWritePost", "User" },
-			}
-
-			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ 📱 Smart Format Status (Responsive)                                │
-			-- └─────────────────────────────────────────────────────────────────────┘
-
-			local FormatStatusSmart = {
-				condition = function()
-					local ok, conform = pcall(require, "conform")
-					if not ok then
-						return false
-					end
-					local formatters = conform.list_formatters(0)
-					return #formatters > 0
-				end,
-
-				flexible = 2,
-
-				-- Full format status
-				{
-					FormatStatus,
-				},
-
-				-- Medium format status
-				{
-					{
-						provider = function()
-							if vim.b.formatted_recently then
-								return " 🔄"
-							else
-								local global_enabled = vim.g.autoformat_enabled ~= false
-								local buffer_enabled = vim.b.autoformat_enabled ~= false
-								return (global_enabled and buffer_enabled) and " 🔧" or " 🚫"
-							end
-						end,
-
-						hl = function()
-							if vim.b.formatted_recently then
-								return { fg = colors.yellow, bold = true }
-							else
-								local global_enabled = vim.g.autoformat_enabled ~= false
-								local buffer_enabled = vim.b.autoformat_enabled ~= false
-								local is_enabled = global_enabled and buffer_enabled
-								return { fg = is_enabled and colors.green or colors.red, bold = true }
-							end
-						end,
-					},
-					{ provider = " " },
-				},
-
-				-- Minimal format status
-				{
-					provider = function()
-						if vim.b.formatted_recently then
-							return "🔄"
-						else
-							local global_enabled = vim.g.autoformat_enabled ~= false
-							local buffer_enabled = vim.b.autoformat_enabled ~= false
-							return (global_enabled and buffer_enabled) and "🔧" or "🚫"
-						end
-					end,
-
-					hl = function()
-						if vim.b.formatted_recently then
-							return { fg = colors.yellow }
-						else
-							local global_enabled = vim.g.autoformat_enabled ~= false
-							local buffer_enabled = vim.b.autoformat_enabled ~= false
-							local is_enabled = global_enabled and buffer_enabled
-							return { fg = is_enabled and colors.green or colors.red }
-						end
-					end,
-				},
 			}
 
 			-- ┌─────────────────────────────────────────────────────────────────────┐
@@ -730,11 +550,11 @@ return {
 			}
 
 			-- ═══════════════════════════════════════════════════════════════════════
-			-- 📑 ENHANCED TABLINE COMPONENTS
+			-- 📑 ENHANCED TABLINE COMPONENTS (IMPROVED)
 			-- ═══════════════════════════════════════════════════════════════════════
 
 			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ 📂 Tabline Offset Component                                         │
+			-- │ 📂 Modern Tabline Offset Component                                  │
 			-- └─────────────────────────────────────────────────────────────────────┘
 
 			local TablineOffset = {
@@ -760,24 +580,27 @@ return {
 					self.winid = win
 
 					local sidebars = {
-						NvimTree = { title = "󰙅 Explorer", hl = "NvimTreeNormal" },
-						["neo-tree"] = { title = "󰙅 Neo-tree", hl = "NeoTreeNormal" },
-						CHADTree = { title = "󰙅 CHADTree", hl = "CHADTreeNormal" },
-						nerdtree = { title = "󰙅 NERDTree", hl = "NERDTree" },
-						Outline = { title = "󰘬 Outline", hl = "OutlineNormal" },
-						tagbar = { title = "󰤌 Tagbar", hl = "TagbarNormal" },
-						undotree = { title = "󰄶 UndoTree", hl = "UndotreeNormal" },
-						vista = { title = "󰤌 Vista", hl = "VistaNormal" },
-						aerial = { title = "󰤌 Aerial", hl = "AerialNormal" },
+						NvimTree = { title = "󰙅 Files", hl = "NvimTreeNormal", icon_color = colors.green },
+						["neo-tree"] = { title = "󰙅 Neo-tree", hl = "NeoTreeNormal", icon_color = colors.green },
+						CHADTree = { title = "󰙅 CHAD", hl = "CHADTreeNormal", icon_color = colors.green },
+						nerdtree = { title = "󰙅 NERD", hl = "NERDTree", icon_color = colors.green },
+						Outline = { title = "󰘬 Outline", hl = "OutlineNormal", icon_color = colors.blue },
+						tagbar = { title = "󰤌 Tags", hl = "TagbarNormal", icon_color = colors.blue },
+						undotree = { title = "󰄶 Undo", hl = "UndotreeNormal", icon_color = colors.yellow },
+						vista = { title = "󰤌 Vista", hl = "VistaNormal", icon_color = colors.blue },
+						aerial = { title = "󰤌 Aerial", hl = "AerialNormal", icon_color = colors.blue },
+						toggleterm = { title = "󰓫 Term", hl = "ToggleTermNormal", icon_color = colors.peach },
 					}
 
 					if sidebars[filetype] then
 						self.title = sidebars[filetype].title
 						self.hl_group = sidebars[filetype].hl
+						self.icon_color = sidebars[filetype].icon_color
 						return true
 					elseif buftype == "terminal" then
 						self.title = "󰓫 Terminal"
 						self.hl_group = "StatusLine"
+						self.icon_color = colors.yellow
 						return true
 					end
 
@@ -801,8 +624,8 @@ return {
 				hl = function(self)
 					local is_focused = api.nvim_get_current_win() == self.winid
 					return {
-						bg = is_focused and colors.surface0 or colors.base,
-						fg = is_focused and colors.text or colors.subtext1,
+						bg = is_focused and colors.surface0 or colors.mantle,
+						fg = is_focused and self.icon_color or colors.subtext0,
 						bold = is_focused,
 					}
 				end,
@@ -811,7 +634,7 @@ return {
 			}
 
 			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ 🎨 Tabline File Icon Component                                      │
+			-- │ 🎨 Enhanced Tabline File Icon Component                            │
 			-- └─────────────────────────────────────────────────────────────────────┘
 
 			local TablineFileIcon = {
@@ -837,17 +660,22 @@ return {
 
 				hl = function(self)
 					if self.buftype == "terminal" then
-						return { fg = colors.yellow }
+						return { fg = self.is_active and colors.yellow or colors.overlay1 }
 					elseif M.is_empty(self.filename) then
-						return { fg = colors.subtext1 }
+						return { fg = self.is_active and colors.subtext1 or colors.overlay0 }
 					end
 					local _, icon_color = devicons.get_icon_color(self.filename, self.extension, { default = true })
-					return { fg = icon_color or colors.text }
+					local base_color = icon_color or colors.text
+					-- Dim inactive tab icons
+					if not self.is_active then
+						base_color = colors.overlay1
+					end
+					return { fg = base_color }
 				end,
 			}
 
 			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ 📝 Tabline File Name Component                                      │
+			-- │ 📝 Modern Tabline File Name Component                              │
 			-- └─────────────────────────────────────────────────────────────────────┘
 
 			local TablineFileName = {
@@ -857,16 +685,21 @@ return {
 					end, "")
 
 					if buftype == "terminal" then
-						return "Terminal"
+						-- Extract terminal name or show generic
+						local bufname = M.safe_call(function()
+							return api.nvim_buf_get_name(self.bufnr)
+						end, "")
+						local term_name = bufname:match "term://.*//(%d+):" or "Term"
+						return term_name
 					end
 
 					local filename = self.filename
 					if M.is_empty(filename) then
-						return "[Untitled]"
+						return "Untitled"
 					end
 
 					filename = fn.fnamemodify(filename, ":t")
-					local max_len = M.get_responsive_length(20)
+					local max_len = M.get_responsive_length(18) -- Slightly shorter for better spacing
 					return M.truncate(filename, max_len)
 				end,
 
@@ -874,25 +707,37 @@ return {
 					return {
 						bold = self.is_active,
 						italic = not self.is_active,
-						fg = self.is_active and colors.text or colors.subtext1,
+						fg = self.is_active and colors.text or colors.subtext0,
 					}
 				end,
 			}
 
 			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ 🏷️  Tabline File Flags Component                                   │
+			-- │ 🏷️  Enhanced Tabline File Flags Component                         │
 			-- └─────────────────────────────────────────────────────────────────────┘
 
 			local TablineFileFlags = {
-				-- Modified indicator
+				-- Modified indicator with animation effect
 				{
 					condition = function(self)
 						return M.safe_call(function()
 							return api.nvim_get_option_value("modified", { buf = self.bufnr })
 						end, false)
 					end,
-					provider = " ●",
-					hl = { fg = colors.green, bold = true },
+					provider = function(self)
+						-- Use different indicators based on activity
+						if self.is_active then
+							return " ●"
+						else
+							return " •"
+						end
+					end,
+					hl = function(self)
+						return {
+							fg = self.is_active and colors.green or colors.overlay2,
+							bold = self.is_active,
+						}
+					end,
 				},
 
 				-- Readonly indicator
@@ -907,12 +752,52 @@ return {
 						return readonly or not modifiable
 					end,
 					provider = " 󰌾",
-					hl = { fg = colors.red },
+					hl = function(self)
+						return {
+							fg = self.is_active and colors.red or colors.overlay1,
+						}
+					end,
+				},
+
+				-- Close button (only on active tab and when hovered)
+				{
+					condition = function(self)
+						return self.is_active and vim.o.columns > 100
+					end,
+					provider = " 󰅖",
+					hl = { fg = colors.overlay1 },
+					on_click = {
+						callback = function(_, minwid)
+							vim.schedule(function()
+								M.safe_call(function()
+									local modified = api.nvim_get_option_value("modified", { buf = minwid })
+									if modified then
+										local choice =
+											fn.confirm("Save changes before closing?", "&Save\n&Discard\n&Cancel")
+										if choice == 1 then
+											vim.cmd("buffer " .. minwid)
+											vim.cmd "write"
+											api.nvim_buf_delete(minwid, {})
+										elseif choice == 2 then
+											api.nvim_buf_delete(minwid, { force = true })
+										end
+									else
+										api.nvim_buf_delete(minwid, {})
+									end
+									vim.cmd.redrawtabline()
+								end)
+							end)
+						end,
+						minwid = function(self)
+							return self.bufnr
+						end,
+						name = "heirline_tabline_close",
+					},
 				},
 			}
 
 			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ 🎯 Tabline Picker Component                                         │
+			-- │ 🎯 Enhanced Tabline Picker Component                               │
 			-- └─────────────────────────────────────────────────────────────────────┘
 
 			local TablinePicker = {
@@ -950,14 +835,18 @@ return {
 				end,
 
 				provider = function(self)
-					return "[" .. self.label .. "]"
+					return string.format(" [%s] ", self.label)
 				end,
 
-				hl = { fg = colors.base, bg = colors.red, bold = true },
+				hl = {
+					fg = colors.base,
+					bg = colors.red,
+					bold = true,
+				},
 			}
 
 			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ 📄 Tabline File Name Block                                          │
+			-- │ 📄 Modern Tabline File Name Block                                  │
 			-- └─────────────────────────────────────────────────────────────────────┘
 
 			local TablineFileNameBlock = {
@@ -969,9 +858,20 @@ return {
 
 				hl = function(self)
 					if self.is_active then
-						return { bg = colors.surface0, fg = colors.text }
+						return {
+							bg = colors.surface0,
+							fg = colors.text,
+						}
+					elseif self.is_visible then
+						return {
+							bg = colors.surface1,
+							fg = colors.subtext1,
+						}
 					else
-						return { bg = colors.base, fg = colors.subtext1 }
+						return {
+							bg = colors.mantle,
+							fg = colors.subtext0,
+						}
 					end
 				end,
 
@@ -979,7 +879,7 @@ return {
 					callback = function(_, minwid, _, button)
 						vim.schedule(function()
 							M.safe_call(function()
-								if button == "m" then
+								if button == "m" then -- Middle click to close
 									local modified = api.nvim_get_option_value("modified", { buf = minwid })
 									if modified then
 										local choice =
@@ -994,7 +894,7 @@ return {
 									else
 										api.nvim_buf_delete(minwid, {})
 									end
-								else
+								else -- Left click to switch
 									api.nvim_win_set_buf(0, minwid)
 								end
 								vim.cmd.redrawtabline()
@@ -1004,7 +904,7 @@ return {
 					minwid = function(self)
 						return self.bufnr
 					end,
-					name = "heirline_tabline_callback",
+					name = "heirline_tabline_buffer_callback",
 				},
 
 				{ provider = " " },
@@ -1016,27 +916,73 @@ return {
 			}
 
 			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ 📊 Tabline Buffer Block                                             │
+			-- │ 📊 Beautiful Tabline Buffer Block with Separators                  │
 			-- └─────────────────────────────────────────────────────────────────────┘
 
-			local TablineBufferBlock = utils.surround({ "▎", "" }, function(self)
-				return self.is_active and colors.blue or colors.surface1
-			end, {
+			local TablineBufferBlock = {
 				TablinePicker,
-				TablineFileNameBlock,
-			})
+				utils.surround(
+					{ "", "" }, -- Modern rounded separators
+					function(self)
+						if self.is_active then
+							return colors.blue
+						elseif self.is_visible then
+							return colors.surface2
+						else
+							return colors.surface1
+						end
+					end,
+					{
+						TablineFileNameBlock,
+					}
+				),
+			}
 
-			-- ═══════════════════════════════════════════════════════════════════════
-			-- 📋 BUFFER MANAGEMENT
-			-- ═══════════════════════════════════════════════════════════════════════
+			-- ┌─────────────────────────────────────────────────────────────────────┐
+			-- │ 📋 Enhanced Buffer Management System                               │
+			-- └─────────────────────────────────────────────────────────────────────┘
 
 			local buflist_cache = {}
+			local buffer_positions = {} -- Track buffer positions for animations
 
-			--- Get filtered buffer list
+			--- Get filtered buffer list with enhanced filtering
 			--- @return table buffers List of valid buffer numbers
 			local function get_bufs()
 				return M.safe_call(function()
-					return vim.tbl_filter(function(bufnr)
+					local excluded_filetypes = {
+						"help",
+						"alpha",
+						"dashboard",
+						"NvimTree",
+						"neo-tree",
+						"Trouble",
+						"lir",
+						"Outline",
+						"spectre_panel",
+						"toggleterm",
+						"TelescopePrompt",
+						"lazy",
+						"mason",
+						"notify",
+						"noice",
+						"aerial",
+						"qf",
+						"fugitive",
+						"gitcommit",
+						"startuptime",
+						"lspinfo",
+						"checkhealth",
+						"DressingInput",
+					}
+
+					local excluded_buftypes = {
+						"quickfix",
+						"help",
+						"nofile",
+						"prompt",
+					}
+
+					local buffers = vim.tbl_filter(function(bufnr)
 						if not api.nvim_buf_is_valid(bufnr) then
 							return false
 						end
@@ -1044,57 +990,100 @@ return {
 						local buftype = api.nvim_get_option_value("buftype", { buf = bufnr })
 						local filetype = api.nvim_get_option_value("filetype", { buf = bufnr })
 						local buflisted = api.nvim_get_option_value("buflisted", { buf = bufnr })
+						local bufname = api.nvim_buf_get_name(bufnr)
 
-						-- Only show normal and terminal buffers
-						if buftype ~= "" and buftype ~= "terminal" then
+						-- Allow terminal buffers
+						if buftype == "terminal" then
+							return buflisted
+						end
+
+						-- Exclude unwanted buftypes
+						if vim.tbl_contains(excluded_buftypes, buftype) then
 							return false
 						end
 
-						-- Exclude specific filetypes
-						local excluded_filetypes = {
-							"help",
-							"alpha",
-							"dashboard",
-							"NvimTree",
-							"neo-tree",
-							"Trouble",
-							"lir",
-							"Outline",
-							"spectre_panel",
-							"toggleterm",
-							"TelescopePrompt",
-							"lazy",
-							"mason",
-							"notify",
-							"noice",
-						}
-
-						for _, ft in ipairs(excluded_filetypes) do
-							if filetype == ft then
-								return false
-							end
+						-- Exclude unwanted filetypes
+						if vim.tbl_contains(excluded_filetypes, filetype) then
+							return false
 						end
 
-						return buflisted
+						-- Exclude special buffers
+						if bufname:match "^%w+://" then
+							return false
+						end
+
+						return buflisted and buftype == ""
 					end, api.nvim_list_bufs())
+
+					-- Sort buffers by last access time for better UX
+					table.sort(buffers, function(a, b)
+						local a_last = api.nvim_buf_get_var(a, "heirline_last_access") or 0
+						local b_last = api.nvim_buf_get_var(b, "heirline_last_access") or 0
+						return a_last > b_last
+					end)
+
+					return buffers
 				end, {})
 			end
 
+			-- Track buffer access for intelligent sorting
+			local function track_buffer_access(bufnr)
+				M.safe_call(function()
+					if api.nvim_buf_is_valid(bufnr) then
+						api.nvim_buf_set_var(bufnr, "heirline_last_access", vim.loop.now())
+					end
+				end)
+			end
+
 			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ 📑 Buffer Line Component                                            │
+			-- │ 📑 Enhanced Buffer Line Component                                   │
 			-- └─────────────────────────────────────────────────────────────────────┘
 
 			local BufferLine = {
 				TablineOffset,
+
+				-- Add a subtle separator after offset
+				{
+					condition = function()
+						return vim.o.columns > 80
+					end,
+					provider = "▏",
+					hl = { fg = colors.surface2 },
+				},
+
 				utils.make_buflist(
 					TablineBufferBlock,
-					{ provider = "󰍞 ", hl = { fg = colors.overlay1 } }, -- Left truncation
-					{ provider = " 󰍟", hl = { fg = colors.overlay1 } }, -- Right truncation
+					{
+						provider = " 󰍞 ",
+						hl = { fg = colors.overlay1, bg = colors.mantle },
+					}, -- Left truncation indicator
+					{
+						provider = " 󰍟 ",
+						hl = { fg = colors.overlay1, bg = colors.mantle },
+					}, -- Right truncation indicator
 					function()
 						return buflist_cache
 					end,
-					false
+					false -- Don't cache (we handle it manually)
 				),
+
+				-- Right side padding and additional info
+				{ provider = "%=" }, -- Right align
+
+				-- Show buffer count when there are multiple buffers
+				{
+					condition = function()
+						return #buflist_cache > 1 and vim.o.columns > 100
+					end,
+					provider = function()
+						return string.format(" %d buffers ", #buflist_cache)
+					end,
+					hl = {
+						fg = colors.subtext0,
+						bg = colors.mantle,
+						italic = true,
+					},
+				},
 			}
 
 			-- ═══════════════════════════════════════════════════════════════════════
@@ -1121,8 +1110,6 @@ return {
 				-- Right side components
 				LSPClients,
 				Primitives.Space,
-				FormatStatusSmart,
-				Primitives.Space,
 				Position,
 				ScrollBar,
 			}
@@ -1130,30 +1117,51 @@ return {
 			local TabLine = BufferLine
 
 			-- ═══════════════════════════════════════════════════════════════════════
-			-- 🎨 HIGHLIGHT GROUPS SETUP
+			-- 🎨 ENHANCED HIGHLIGHT GROUPS SETUP
 			-- ═══════════════════════════════════════════════════════════════════════
 
-			--- Setup custom highlight groups
+			--- Setup custom highlight groups with modern styling
 			local function setup_highlights()
 				local highlights = {
+					-- Enhanced Tabline highlights
+					HeirlineTablineActive = {
+						fg = colors.text,
+						bg = colors.surface0,
+						bold = true,
+					},
+					HeirlineTablineInactive = {
+						fg = colors.subtext0,
+						bg = colors.mantle,
+					},
+					HeirlineTablineVisible = {
+						fg = colors.subtext1,
+						bg = colors.surface1,
+					},
+					HeirlineTablineModified = {
+						fg = colors.green,
+						bold = true,
+					},
+					HeirlineTablineClose = {
+						fg = colors.overlay1,
+						bg = "NONE",
+					},
+					HeirlineTablineSeparator = {
+						fg = colors.surface2,
+						bg = colors.mantle,
+					},
+
 					-- Git highlights
 					GitAdded = { fg = colors.green, bold = true },
 					GitChanged = { fg = colors.yellow, bold = true },
 					GitRemoved = { fg = colors.red, bold = true },
 
-					-- Mode highlights
+					-- Mode highlights with gradients
 					HeirlineModeNormal = { fg = colors.base, bg = colors.blue, bold = true },
 					HeirlineModeInsert = { fg = colors.base, bg = colors.green, bold = true },
 					HeirlineModeVisual = { fg = colors.base, bg = colors.mauve, bold = true },
 					HeirlineModeCommand = { fg = colors.base, bg = colors.peach, bold = true },
 					HeirlineModeReplace = { fg = colors.base, bg = colors.red, bold = true },
 					HeirlineModeTerminal = { fg = colors.base, bg = colors.yellow, bold = true },
-
-					-- Tabline highlights
-					HeirlineTablineActive = { fg = colors.text, bg = colors.surface0, bold = true },
-					HeirlineTablineInactive = { fg = colors.subtext1, bg = colors.base },
-					HeirlineTablineModified = { fg = colors.green, bold = true },
-					HeirlineTablineClose = { fg = colors.overlay1 },
 				}
 
 				for group, hl in pairs(highlights) do
@@ -1198,6 +1206,8 @@ return {
 								"spectre_panel",
 								"startuptime",
 								"TelescopePrompt",
+								"checkhealth",
+								"DressingInput",
 							},
 						}, args.buf)
 					end,
@@ -1207,82 +1217,12 @@ return {
 			setup_highlights()
 
 			-- ═══════════════════════════════════════════════════════════════════════
-			-- 🔄 ENHANCED AUTOCOMMANDS
+			-- 🔄 ENHANCED AUTOCOMMANDS & PERFORMANCE
 			-- ═══════════════════════════════════════════════════════════════════════
 
 			local augroup = api.nvim_create_augroup("HeirlineEnhanced", { clear = true })
 
-			-- Format toggle event handler
-			api.nvim_create_autocmd({ "User" }, {
-				group = augroup,
-				pattern = "ConformFormatToggle",
-				callback = function()
-					vim.schedule(function()
-						vim.cmd.redrawstatus()
-					end)
-				end,
-				desc = "Redraw status line on format toggle",
-			})
-
-			-- Format status indicator with timer (FIXED)
-			api.nvim_create_autocmd("BufWritePost", {
-				group = augroup,
-				callback = function()
-					local bufnr = api.nvim_get_current_buf()
-					if vim.b.autoformat_enabled ~= false and vim.g.autoformat_enabled ~= false then
-						vim.b.formatted_recently = true
-						vim.cmd.redrawstatus()
-
-						-- Clear existing timer for this buffer
-						if format_timers[bufnr] then
-							format_timers[bufnr]:stop()
-							format_timers[bufnr]:close()
-							format_timers[bufnr] = nil
-						end
-
-						-- Set new timer to clear format indicator
-						local timer = vim.uv.new_timer()
-						if timer then
-							timer:start(
-								5000,
-								0,
-								vim.schedule_wrap(function()
-									-- Check if buffer is still valid
-									if api.nvim_buf_is_valid(bufnr) then
-										-- Use buffer-specific approach to set the variable
-										api.nvim_buf_call(bufnr, function()
-											vim.b.formatted_recently = false
-										end)
-										vim.cmd.redrawstatus()
-									end
-									if format_timers[bufnr] then
-										format_timers[bufnr]:close()
-										format_timers[bufnr] = nil
-									end
-								end)
-							)
-							format_timers[bufnr] = timer
-						end
-					end
-				end,
-				desc = "Show format indicator after save",
-			})
-
-			-- Clean up timers when buffers are deleted
-			api.nvim_create_autocmd("BufDelete", {
-				group = augroup,
-				callback = function()
-					local bufnr = tonumber(vim.fn.expand "<abuf>")
-					if bufnr and format_timers[bufnr] then
-						format_timers[bufnr]:stop()
-						format_timers[bufnr]:close()
-						format_timers[bufnr] = nil
-					end
-				end,
-				desc = "Clean up format timers on buffer delete",
-			})
-
-			-- Buffer list management
+			-- Buffer list management with intelligent updates
 			api.nvim_create_autocmd({
 				"VimEnter",
 				"UIEnter",
@@ -1292,33 +1232,66 @@ return {
 				"SessionLoadPost",
 			}, {
 				group = augroup,
-				callback = function()
+				callback = function(event)
 					vim.schedule(function()
 						M.safe_call(function()
 							local buffers = get_bufs()
 
-							-- Update buffer cache
-							for i, bufnr in ipairs(buffers) do
-								buflist_cache[i] = bufnr
-							end
-							for i = #buffers + 1, #buflist_cache do
-								buflist_cache[i] = nil
+							-- Update buffer cache efficiently
+							local cache_changed = false
+							if #buffers ~= #buflist_cache then
+								cache_changed = true
+							else
+								for i, bufnr in ipairs(buffers) do
+									if buflist_cache[i] ~= bufnr then
+										cache_changed = true
+										break
+									end
+								end
 							end
 
-							-- Auto-show/hide tabline
-							if #buflist_cache > 1 then
-								go.showtabline = 2
-							elseif go.showtabline ~= 1 then
-								go.showtabline = 1
+							if cache_changed then
+								-- Clear old cache
+								for i = 1, #buflist_cache do
+									buflist_cache[i] = nil
+								end
+
+								-- Update with new buffers
+								for i, bufnr in ipairs(buffers) do
+									buflist_cache[i] = bufnr
+								end
+
+								-- Smart tabline visibility
+								if #buflist_cache > 1 then
+									go.showtabline = 2
+								elseif go.showtabline ~= 1 then
+									go.showtabline = 1
+								end
+
+								-- Track this as a buffer access
+								if event.event == "BufEnter" and event.buf then
+									track_buffer_access(event.buf)
+								end
 							end
 						end)
 					end)
 				end,
-				desc = "Update buffer list and tabline visibility",
+				desc = "Update buffer list intelligently",
 			})
 
-			-- Window and tabline refresh events
-			api.nvim_create_autocmd({ "BufEnter", "WinEnter", "WinClosed", "WinResized" }, {
+			-- Track buffer access on enter
+			api.nvim_create_autocmd("BufEnter", {
+				group = augroup,
+				callback = function(event)
+					if event.buf then
+						track_buffer_access(event.buf)
+					end
+				end,
+				desc = "Track buffer access time",
+			})
+
+			-- Efficient tabline refresh on window events
+			api.nvim_create_autocmd({ "WinEnter", "WinClosed", "WinResized" }, {
 				group = augroup,
 				callback = function()
 					vim.schedule(function()
@@ -1341,19 +1314,20 @@ return {
 				desc = "Update colors on colorscheme change",
 			})
 
-			-- Performance optimizations for insert mode
+			-- Performance optimizations for different modes
+			local original_updatetime = go.updatetime
 			api.nvim_create_autocmd("InsertEnter", {
 				group = augroup,
 				callback = function()
 					go.updatetime = 1000 -- Slower updates in insert mode
 				end,
-				desc = "Reduce update frequency in insert mode",
+				desc = "Optimize performance in insert mode",
 			})
 
 			api.nvim_create_autocmd("InsertLeave", {
 				group = augroup,
 				callback = function()
-					go.updatetime = 250 -- Normal update frequency
+					go.updatetime = original_updatetime
 				end,
 				desc = "Restore normal update frequency",
 			})
@@ -1371,7 +1345,7 @@ return {
 					resize_timer = vim.uv.new_timer()
 					if resize_timer then
 						resize_timer:start(
-							150,
+							100, -- Faster response
 							0,
 							vim.schedule_wrap(function()
 								vim.cmd "redrawstatus | redrawtabline"
@@ -1386,52 +1360,12 @@ return {
 				desc = "Debounced redraw on resize",
 			})
 
-			-- Focus change handler
-			api.nvim_create_autocmd({ "FocusGained", "FocusLost" }, {
-				group = augroup,
-				callback = function()
-					vim.schedule(function()
-						vim.cmd.redrawtabline()
-					end)
-				end,
-				desc = "Refresh tabline on focus change",
-			})
-
 			-- ═══════════════════════════════════════════════════════════════════════
 			-- ⌨️  ENHANCED KEYMAPS & COMMANDS
 			-- ═══════════════════════════════════════════════════════════════════════
 
 			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ 🎛️  Format Toggle Commands                                          │
-			-- └─────────────────────────────────────────────────────────────────────┘
-
-			vim.api.nvim_create_user_command("FormatToggle", function()
-				vim.g.autoformat_enabled = not vim.g.autoformat_enabled
-				local status = vim.g.autoformat_enabled and "✅ enabled" or "❌ disabled"
-				vim.notify(
-					string.format("Global autoformat %s", status),
-					vim.log.levels.INFO,
-					{ title = "Conform Format" }
-				)
-				vim.api.nvim_exec_autocmds("User", { pattern = "ConformFormatToggle" })
-			end, { desc = "Toggle global autoformat on save" })
-
-			vim.api.nvim_create_user_command("FormatBufferToggle", function()
-				if vim.b.autoformat_enabled == nil then
-					vim.b.autoformat_enabled = true
-				end
-				vim.b.autoformat_enabled = not vim.b.autoformat_enabled
-				local status = vim.b.autoformat_enabled and "✅ enabled" or "❌ disabled"
-				vim.notify(
-					string.format("Buffer autoformat %s", status),
-					vim.log.levels.INFO,
-					{ title = "Conform Format" }
-				)
-				vim.api.nvim_exec_autocmds("User", { pattern = "ConformFormatToggle" })
-			end, { desc = "Toggle autoformat for current buffer" })
-
-			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ 🎯 Buffer Picker Keymap                                             │
+			-- │ 🎯 Enhanced Buffer Picker                                           │
 			-- └─────────────────────────────────────────────────────────────────────┘
 
 			vim.keymap.set("n", "gbb", function()
@@ -1461,6 +1395,7 @@ return {
 					local bufnr = buflist._picker_labels[char]
 					if bufnr and api.nvim_buf_is_valid(bufnr) then
 						api.nvim_win_set_buf(0, bufnr)
+						track_buffer_access(bufnr) -- Track access
 						local name = fn.fnamemodify(api.nvim_buf_get_name(bufnr), ":t")
 						name = M.is_empty(name) and "[Untitled]" or name
 						vim.notify("󰒅 Switched to: " .. name, vim.log.levels.INFO)
@@ -1474,33 +1409,30 @@ return {
 			end, { desc = "󰒅 Pick buffer from tabline" })
 
 			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ 🚀 Buffer Navigation Functions                                      │
+			-- │ 🚀 Enhanced Buffer Navigation                                       │
 			-- └─────────────────────────────────────────────────────────────────────┘
 
-			--- Create buffer navigation function with notification
-			--- @param cmd string Command to execute
-			--- @param desc string Description
-			--- @param icon string Icon for notification
-			--- @return function navigation_func Navigation function
 			local function create_buffer_nav(cmd, desc, icon)
 				return function()
 					M.safe_call(function()
-						local current_name = fn.fnamemodify(api.nvim_buf_get_name(0), ":t")
+						local current_buf = api.nvim_get_current_buf()
+						local current_name = fn.fnamemodify(api.nvim_buf_get_name(current_buf), ":t")
 						current_name = M.is_empty(current_name) and "[Untitled]" or current_name
 
 						vim.cmd(cmd)
 
-						local new_name = fn.fnamemodify(api.nvim_buf_get_name(0), ":t")
-						new_name = M.is_empty(new_name) and "[Untitled]" or new_name
-
-						if current_name ~= new_name then
+						local new_buf = api.nvim_get_current_buf()
+						if new_buf ~= current_buf then
+							track_buffer_access(new_buf)
+							local new_name = fn.fnamemodify(api.nvim_buf_get_name(new_buf), ":t")
+							new_name = M.is_empty(new_name) and "[Untitled]" or new_name
 							vim.notify(string.format("%s %s", icon, new_name), vim.log.levels.INFO)
 						end
 					end)
 				end
 			end
 
-			-- Buffer navigation keymaps
+			-- Smart buffer navigation with wrap-around
 			vim.keymap.set(
 				"n",
 				"<Tab>",
@@ -1513,6 +1445,8 @@ return {
 				create_buffer_nav("bprevious", "Previous buffer", "󰒮"),
 				{ desc = "󰒮 Previous buffer" }
 			)
+
+			-- Alternative keybindings
 			vim.keymap.set(
 				"n",
 				"<leader>bn",
@@ -1527,10 +1461,10 @@ return {
 			)
 
 			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ 🗑️  Buffer Management Keymaps                                      │
+			-- │ 🗑️  Enhanced Buffer Management                                     │
 			-- └─────────────────────────────────────────────────────────────────────┘
 
-			-- Close buffer with confirmation for modified files
+			-- Smart buffer close with confirmation
 			vim.keymap.set("n", "<leader>bd", function()
 				M.safe_call(function()
 					local bufnr = api.nvim_get_current_buf()
@@ -1539,11 +1473,7 @@ return {
 					local modified = api.nvim_get_option_value("modified", { buf = bufnr })
 
 					if modified then
-						local choices = {
-							"&Save and close",
-							"&Close without saving",
-							"&Cancel",
-						}
+						local choices = { "&Save and close", "&Close without saving", "&Cancel" }
 						local choice = fn.confirm(
 							string.format("󰜄 '%s' has unsaved changes", filename),
 							table.concat(choices, "\n"),
@@ -1560,13 +1490,18 @@ return {
 							vim.notify("󰆴 Closed without saving: " .. filename, vim.log.levels.WARN)
 						end
 					else
+						-- Check if this is the last buffer
+						local buffers = get_bufs()
+						if #buffers <= 1 then
+							vim.cmd "enew" -- Create new buffer before closing
+						end
 						vim.cmd "bdelete"
 						vim.notify("󰆴 Closed: " .. filename, vim.log.levels.INFO)
 					end
 				end)
-			end, { desc = "󰆴 Close buffer" })
+			end, { desc = "󰆴 Smart close buffer" })
 
-			-- Close other buffers
+			-- Close all other buffers
 			vim.keymap.set("n", "<leader>bo", function()
 				M.safe_call(function()
 					local current = api.nvim_get_current_buf()
@@ -1587,17 +1522,14 @@ return {
 				end)
 			end, { desc = "󰆴 Close other buffers" })
 
-			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ 🔢 Numeric Buffer Navigation                                        │
-			-- └─────────────────────────────────────────────────────────────────────┘
-
-			-- Quick buffer access with Ctrl+number
+			-- Quick buffer access (Ctrl+1-9)
 			for i = 1, 9 do
 				vim.keymap.set("n", "<C-" .. i .. ">", function()
 					M.safe_call(function()
 						local buffers = get_bufs()
 						if buffers[i] and api.nvim_buf_is_valid(buffers[i]) then
 							api.nvim_win_set_buf(0, buffers[i])
+							track_buffer_access(buffers[i])
 							local name = fn.fnamemodify(api.nvim_buf_get_name(buffers[i]), ":t")
 							name = M.is_empty(name) and "[Untitled]" or name
 							vim.notify(string.format("󰒅 Buffer %d: %s", i, name), vim.log.levels.INFO)
@@ -1608,79 +1540,19 @@ return {
 				end, { desc = string.format("󰒅 Switch to buffer %d", i) })
 			end
 
-			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ ↔️  Buffer Movement Keymaps                                         │
-			-- └─────────────────────────────────────────────────────────────────────┘
-
-			-- Move buffer left
-			vim.keymap.set("n", "<leader>bmh", function()
-				M.safe_call(function()
-					local current_buf = api.nvim_get_current_buf()
-					local buffers = get_bufs()
-					local current_idx = nil
-
-					for i, bufnr in ipairs(buffers) do
-						if bufnr == current_buf then
-							current_idx = i
-							break
-						end
-					end
-
-					if current_idx and current_idx > 1 then
-						buffers[current_idx], buffers[current_idx - 1] = buffers[current_idx - 1], buffers[current_idx]
-
-						for i, v in ipairs(buffers) do
-							buflist_cache[i] = v
-						end
-
-						vim.cmd.redrawtabline()
-						vim.notify("󰒮 Moved buffer left", vim.log.levels.INFO)
-					else
-						vim.notify("Cannot move buffer left", vim.log.levels.WARN)
-					end
-				end)
-			end, { desc = "󰒮 Move buffer left" })
-
-			-- Move buffer right
-			vim.keymap.set("n", "<leader>bml", function()
-				M.safe_call(function()
-					local current_buf = api.nvim_get_current_buf()
-					local buffers = get_bufs()
-					local current_idx = nil
-
-					for i, bufnr in ipairs(buffers) do
-						if bufnr == current_buf then
-							current_idx = i
-							break
-						end
-					end
-
-					if current_idx and current_idx < #buffers then
-						buffers[current_idx], buffers[current_idx + 1] = buffers[current_idx + 1], buffers[current_idx]
-
-						for i, v in ipairs(buffers) do
-							buflist_cache[i] = v
-						end
-
-						vim.cmd.redrawtabline()
-						vim.notify("󰒭 Moved buffer right", vim.log.levels.INFO)
-					else
-						vim.notify("Cannot move buffer right", vim.log.levels.WARN)
-					end
-				end)
-			end, { desc = "󰒭 Move buffer right" })
-
-			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ 🔄 Quick Buffer Toggle                                              │
-			-- └─────────────────────────────────────────────────────────────────────┘
-
 			-- Toggle to last buffer
 			vim.keymap.set("n", "<leader><leader>", function()
 				M.safe_call(function()
-					vim.cmd "buffer #"
-					local name = fn.fnamemodify(api.nvim_buf_get_name(0), ":t")
-					name = M.is_empty(name) and "[Untitled]" or name
-					vim.notify("󰒅 Toggled to: " .. name, vim.log.levels.INFO)
+					local last_buf = fn.bufnr "#"
+					if last_buf ~= -1 and api.nvim_buf_is_valid(last_buf) then
+						api.nvim_win_set_buf(0, last_buf)
+						track_buffer_access(last_buf)
+						local name = fn.fnamemodify(api.nvim_buf_get_name(last_buf), ":t")
+						name = M.is_empty(name) and "[Untitled]" or name
+						vim.notify("󰒅 Toggled to: " .. name, vim.log.levels.INFO)
+					else
+						vim.notify("No alternate buffer", vim.log.levels.WARN)
+					end
 				end)
 			end, { desc = "󰒅 Toggle last buffer" })
 
@@ -1694,32 +1566,18 @@ return {
 			-- 📋 ENHANCED COMMANDS
 			-- ═══════════════════════════════════════════════════════════════════════
 
-			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ 🔧 Interface Toggle Commands                                        │
-			-- └─────────────────────────────────────────────────────────────────────┘
-
-			vim.api.nvim_create_user_command("TablineToggle", function()
-				if go.showtabline == 0 then
-					go.showtabline = 2
-					vim.notify("󰓩 Tabline enabled", vim.log.levels.INFO)
-				else
-					go.showtabline = 0
-					vim.notify("󰓩 Tabline disabled", vim.log.levels.INFO)
-				end
-			end, { desc = "Toggle tabline visibility" })
-
-			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ 📊 Buffer Information Command                                       │
-			-- └─────────────────────────────────────────────────────────────────────┘
-
+			-- Enhanced buffer info with detailed statistics
 			vim.api.nvim_create_user_command("BufferInfo", function()
 				local buffers = get_bufs()
 				local current_buf = api.nvim_get_current_buf()
-				local info = { "󰒅 Buffer Information", string.rep("─", 50) }
+				local info = { "󰒅 Enhanced Buffer Information", string.rep("━", 60) }
 
 				if #buffers == 0 then
 					table.insert(info, "No buffers available")
 				else
+					table.insert(info, string.format("Total buffers: %d", #buffers))
+					table.insert(info, "")
+
 					for i, bufnr in ipairs(buffers) do
 						local name = api.nvim_buf_get_name(bufnr)
 						local filename = M.is_empty(name) and "[Untitled]" or fn.fnamemodify(name, ":t")
@@ -1728,23 +1586,42 @@ return {
 						local current = bufnr == current_buf and " 󰻃" or ""
 						local buftype = api.nvim_get_option_value("buftype", { buf = bufnr })
 						local type_indicator = buftype == "terminal" and " 󰓫" or ""
+						local last_access = api.nvim_buf_get_var(bufnr, "heirline_last_access") or 0
+						local time_ago = last_access > 0
+								and string.format(" (%.1fs ago)", (vim.loop.now() - last_access) / 1000)
+							or ""
 
 						table.insert(
 							info,
-							string.format("%2d. %s%s%s%s%s", i, filename, modified, readonly, type_indicator, current)
+							string.format(
+								"%2d. %s%s%s%s%s%s",
+								i,
+								filename,
+								modified,
+								readonly,
+								type_indicator,
+								current,
+								time_ago
+							)
 						)
 					end
 				end
 
-				table.insert(info, string.rep("─", 50))
-				table.insert(info, string.format("Total: %d buffer(s)", #buffers))
+				table.insert(info, "")
+				table.insert(info, string.rep("━", 60))
+				table.insert(info, "Keybindings:")
+				table.insert(info, "  <Tab>/<S-Tab>  - Navigate buffers")
+				table.insert(info, "  <Ctrl-1-9>     - Quick buffer access")
+				table.insert(info, "  gbb            - Buffer picker")
+				table.insert(info, "  <leader>bd     - Close buffer")
+				table.insert(info, "  <leader>bo     - Close other buffers")
 
-				-- Create floating window
+				-- Create floating window with better styling
 				local buf = api.nvim_create_buf(false, true)
 				api.nvim_buf_set_lines(buf, 0, -1, false, info)
 
-				local width = math.max(60, math.min(vim.o.columns - 10, 80))
-				local height = math.min(#info + 2, vim.o.lines - 10)
+				local width = math.max(70, math.min(vim.o.columns - 10, 90))
+				local height = math.min(#info + 4, vim.o.lines - 10)
 				local opts = {
 					relative = "editor",
 					width = width,
@@ -1753,12 +1630,15 @@ return {
 					row = math.floor((vim.o.lines - height) / 2),
 					style = "minimal",
 					border = "rounded",
-					title = " Buffer Info ",
+					title = " 󰒅 Buffer Info ",
 					title_pos = "center",
 				}
 
 				local win = api.nvim_open_win(buf, true, opts)
 				api.nvim_set_option_value("filetype", "heirline-info", { buf = buf })
+
+				-- Enhanced window styling
+				api.nvim_win_set_hl_ns(win, api.nvim_create_namespace "heirline_info")
 
 				-- Key mappings for the info window
 				local function close_window()
@@ -1769,45 +1649,101 @@ return {
 
 				vim.keymap.set("n", "<Esc>", close_window, { buffer = buf, nowait = true })
 				vim.keymap.set("n", "q", close_window, { buffer = buf, nowait = true })
-			end, { desc = "Show detailed buffer information" })
+				vim.keymap.set("n", "<CR>", close_window, { buffer = buf, nowait = true })
+			end, { desc = "Show enhanced buffer information" })
 
-			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ 🧹 Buffer Cleanup Command                                           │
-			-- └─────────────────────────────────────────────────────────────────────┘
-
+			-- Smart buffer cleanup with preview
 			vim.api.nvim_create_user_command("BufferCleanup", function()
 				M.safe_call(function()
 					local buffers = get_bufs()
 					local current = api.nvim_get_current_buf()
-					local cleaned = 0
+					local candidates = {}
 
+					-- Find cleanup candidates
 					for _, bufnr in ipairs(buffers) do
 						if bufnr ~= current and api.nvim_buf_is_valid(bufnr) then
 							local modified = api.nvim_get_option_value("modified", { buf = bufnr })
 							local name = api.nvim_buf_get_name(bufnr)
 
-							-- Clean up empty buffers, temp files, and scratch buffers
-							if not modified and (M.is_empty(name) or name:match "^/tmp/" or name:match "scratch") then
-								api.nvim_buf_delete(bufnr, {})
-								cleaned = cleaned + 1
+							if not modified then
+								local should_clean = false
+								local reason = ""
+
+								if M.is_empty(name) then
+									should_clean = true
+									reason = "Empty buffer"
+								elseif name:match "^/tmp/" then
+									should_clean = true
+									reason = "Temporary file"
+								elseif name:match "scratch" or name:match "Scratch" then
+									should_clean = true
+									reason = "Scratch buffer"
+								elseif fn.getbufvar(bufnr, "&buftype") == "nofile" then
+									should_clean = true
+									reason = "No file buffer"
+								end
+
+								if should_clean then
+									table.insert(candidates, {
+										bufnr = bufnr,
+										name = M.is_empty(name) and "[Untitled]" or fn.fnamemodify(name, ":t"),
+										reason = reason,
+									})
+								end
 							end
 						end
 					end
 
-					vim.notify(string.format("󰆴 Cleaned up %d buffer(s)", cleaned), vim.log.levels.INFO)
+					if #candidates == 0 then
+						vim.notify("󰆴 No buffers need cleanup", vim.log.levels.INFO)
+						return
+					end
+
+					-- Show preview and confirm
+					local preview = { "Buffers to be cleaned:" }
+					for _, candidate in ipairs(candidates) do
+						table.insert(preview, string.format("  • %s (%s)", candidate.name, candidate.reason))
+					end
+
+					local choice = fn.confirm(
+						table.concat(preview, "\n") .. string.format("\n\nCleanup %d buffer(s)?", #candidates),
+						"&Yes\n&No",
+						2
+					)
+
+					if choice == 1 then
+						local cleaned = 0
+						for _, candidate in ipairs(candidates) do
+							if api.nvim_buf_is_valid(candidate.bufnr) then
+								api.nvim_buf_delete(candidate.bufnr, {})
+								cleaned = cleaned + 1
+							end
+						end
+						vim.notify(string.format("󰆴 Cleaned up %d buffer(s)", cleaned), vim.log.levels.INFO)
+					else
+						vim.notify("Cleanup cancelled", vim.log.levels.INFO)
+					end
 				end)
-			end, { desc = "Clean up empty and scratch buffers" })
+			end, { desc = "Smart buffer cleanup with preview" })
 
-			-- ┌─────────────────────────────────────────────────────────────────────┐
-			-- │ 🎨 Theme Toggle Command                                             │
-			-- └─────────────────────────────────────────────────────────────────────┘
+			-- Tabline toggle with animation
+			vim.api.nvim_create_user_command("TablineToggle", function()
+				if go.showtabline == 0 then
+					go.showtabline = 2
+					vim.notify("󰓩 Tabline enabled", vim.log.levels.INFO)
+				else
+					go.showtabline = 0
+					vim.notify("󰓩 Tabline disabled", vim.log.levels.INFO)
+				end
+			end, { desc = "Toggle tabline visibility" })
 
+			-- Advanced theme cycling
 			vim.api.nvim_create_user_command("ThemeToggle", function()
 				local flavors = { "latte", "frappe", "macchiato", "mocha" }
+				local flavor_names = { "☀️  Latte", "🪴 Frappé", "🌺 Macchiato", "🌙 Mocha" }
 				local current = vim.g.catppuccin_flavour or "mocha"
 				local current_idx = 1
 
-				-- Find current flavor index
 				for i, flavor in ipairs(flavors) do
 					if flavor == current then
 						current_idx = i
@@ -1815,18 +1751,59 @@ return {
 					end
 				end
 
-				-- Get next flavor
 				local next_idx = current_idx % #flavors + 1
 				local next_flavor = flavors[next_idx]
 
-				-- Apply new theme
 				vim.g.catppuccin_flavour = next_flavor
 				vim.cmd "colorscheme catppuccin"
-				vim.notify(string.format("󰏘 Theme: %s", next_flavor:gsub("^%l", string.upper)), vim.log.levels.INFO)
-			end, { desc = "Toggle between catppuccin themes" })
+				vim.notify(string.format("󰏘 Theme: %s", flavor_names[next_idx]), vim.log.levels.INFO)
+			end, { desc = "Cycle through catppuccin themes" })
+
+			-- Buffer sorting options
+			vim.api.nvim_create_user_command("BufferSort", function(opts)
+				local sort_type = opts.args or "name"
+				local buffers = get_bufs()
+
+				if sort_type == "name" then
+					table.sort(buffers, function(a, b)
+						local name_a = fn.fnamemodify(api.nvim_buf_get_name(a), ":t")
+						local name_b = fn.fnamemodify(api.nvim_buf_get_name(b), ":t")
+						return name_a < name_b
+					end)
+				elseif sort_type == "modified" then
+					table.sort(buffers, function(a, b)
+						local mod_a = api.nvim_get_option_value("modified", { buf = a })
+						local mod_b = api.nvim_get_option_value("modified", { buf = b })
+						return mod_a and not mod_b
+					end)
+				elseif sort_type == "access" then
+					table.sort(buffers, function(a, b)
+						local access_a = api.nvim_buf_get_var(a, "heirline_last_access") or 0
+						local access_b = api.nvim_buf_get_var(b, "heirline_last_access") or 0
+						return access_a > access_b
+					end)
+				end
+
+				-- Update cache
+				for i = 1, #buflist_cache do
+					buflist_cache[i] = nil
+				end
+				for i, bufnr in ipairs(buffers) do
+					buflist_cache[i] = bufnr
+				end
+
+				vim.cmd.redrawtabline()
+				vim.notify(string.format("󰒅 Buffers sorted by %s", sort_type), vim.log.levels.INFO)
+			end, {
+				desc = "Sort buffers by criteria",
+				nargs = "?",
+				complete = function()
+					return { "name", "modified", "access" }
+				end,
+			})
 
 			-- ═══════════════════════════════════════════════════════════════════════
-			-- 🎯 FINAL SETUP & INITIALIZATION
+			-- 🎯 FINAL SETUP & OPTIMIZATION
 			-- ═══════════════════════════════════════════════════════════════════════
 
 			-- Initial buffer list update
@@ -1834,29 +1811,75 @@ return {
 				local buffers = get_bufs()
 				for i, bufnr in ipairs(buffers) do
 					buflist_cache[i] = bufnr
+					-- Initialize access time for existing buffers
+					if not pcall(api.nvim_buf_get_var, bufnr, "heirline_last_access") then
+						api.nvim_buf_set_var(bufnr, "heirline_last_access", vim.loop.now())
+					end
+				end
+
+				-- Set intelligent initial tabline state
+				if #buffers > 1 then
+					go.showtabline = 2
 				end
 			end)
 
-			-- Success notification
-			vim.notify("🚀 Heirline Enhanced loaded successfully!", vim.log.levels.INFO, {
-				title = "Heirline",
-				timeout = 2000,
-			})
-
-			-- Clean up timers on exit
-			vim.api.nvim_create_autocmd("VimLeavePre", {
+			-- Memory cleanup on exit
+			api.nvim_create_autocmd("VimLeavePre", {
 				group = augroup,
 				callback = function()
-					for bufnr, timer in pairs(format_timers) do
-						if timer then
-							timer:stop()
-							timer:close()
-						end
+					-- Clean up timers
+					if resize_timer then
+						resize_timer:stop()
+						resize_timer:close()
+						resize_timer = nil
 					end
-					format_timers = {}
+
+					-- Clear cache
+					buflist_cache = {}
+					buffer_positions = {}
 				end,
-				desc = "Clean up all timers on exit",
+				desc = "Clean up resources on exit",
 			})
+
+			-- Periodic buffer access cleanup (prevent memory bloat)
+			local cleanup_timer = vim.uv.new_timer()
+			if cleanup_timer then
+				cleanup_timer:start(300000, 300000, function() -- Every 5 minutes
+					vim.schedule(function()
+						M.safe_call(function()
+							local current_time = vim.loop.now()
+							local buffers = api.nvim_list_bufs()
+
+							for _, bufnr in ipairs(buffers) do
+								if api.nvim_buf_is_valid(bufnr) then
+									local last_access = api.nvim_buf_get_var(bufnr, "heirline_last_access") or 0
+									-- Remove access time for buffers not accessed in 30 minutes
+									if current_time - last_access > 1800000 then
+										pcall(api.nvim_buf_del_var, bufnr, "heirline_last_access")
+									end
+								end
+							end
+						end)
+					end)
+				end)
+			end
+
+			-- Success notification with enhanced info
+			vim.notify("🚀 Heirline Enhanced loaded successfully!", vim.log.levels.INFO, {
+				title = "Heirline Enhanced",
+				timeout = 3000,
+			})
+
+			-- Additional performance hint
+			vim.defer_fn(function()
+				local buffers = get_bufs()
+				if #buffers > 10 then
+					vim.notify("💡 Tip: Use 'gbb' for quick buffer picking with many buffers", vim.log.levels.INFO, {
+						title = "Heirline Tip",
+						timeout = 5000,
+					})
+				end
+			end, 2000)
 		end,
 	},
 }

@@ -20,137 +20,189 @@ return {
 	},
 
 	keys = function()
-		local map = function(lhs, rhs, desc)
-			return { lhs, rhs, desc = desc }
-		end
+		local builtin = require "telescope.builtin"
 
 		return {
-			-- File
-			map("<leader>ff", "<cmd>Telescope find_files<cr>", "Find Files"),
-			map("<leader>fF", "<cmd>Telescope find_files hidden=true no_ignore=true<cr>", "Find All Files"),
-			map("<leader>fg", "<cmd>Telescope live_grep<cr>", "Live Grep"),
-			map("<leader>fw", "<cmd>Telescope grep_string<cr>", "Grep Word Under Cursor"),
-			map("<leader>fb", "<cmd>Telescope buffers<cr>", "Buffers"),
-			map("<leader>fo", "<cmd>Telescope oldfiles<cr>", "Recent Files"),
-			map("<leader>fr", "<cmd>Telescope resume<cr>", "Resume Last Search"),
-			map("<leader>f.", function()
-				require("telescope.builtin").find_files {
-					cwd = vim.fn.expand "%:p:h",
-					prompt_title = "Find Files (Here)",
-				}
-			end, "Find Files in Current Directory"),
+			-- File related
+			{ "<leader>ff", builtin.find_files, desc = "Find Files" },
+			{ "<leader>fg", builtin.live_grep, desc = "Live Grep" },
+			{ "<leader>fb", builtin.buffers, desc = "Buffers" },
+			{ "<leader>fr", builtin.oldfiles, desc = "Recent Files" },
+			{ "<leader>fw", builtin.grep_string, desc = "Grep Word" },
 
-			-- LSP & Nav
-			map("<leader>fs", "<cmd>Telescope lsp_document_symbols<cr>", "Document Symbols"),
-			map("<leader>fS", "<cmd>Telescope lsp_dynamic_workspace_symbols<cr>", "Workspace Symbols"),
-			map("<leader>fd", "<cmd>Telescope diagnostics<cr>", "Diagnostics"),
-			map("<leader>fD", "<cmd>Telescope diagnostics bufnr=0<cr>", "Buffer Diagnostics"),
-			map("<leader>fj", "<cmd>Telescope jumplist<cr>", "Jump List"),
-			map("<leader>fm", "<cmd>Telescope marks<cr>", "Marks"),
-			map("<leader>fq", "<cmd>Telescope quickfix<cr>", "Quickfix List"),
-			map("<leader>fl", "<cmd>Telescope loclist<cr>", "Location List"),
+			-- LSP
+			{ "gd", builtin.lsp_definitions, desc = "Go to Definition" },
+			{ "gr", builtin.lsp_references, desc = "References" },
+			{ "<leader>ds", builtin.lsp_document_symbols, desc = "Document Symbols" },
+			{ "<leader>ws", builtin.lsp_workspace_symbols, desc = "Workspace Symbols" },
+			{ "<leader>dd", builtin.diagnostics, desc = "Diagnostics" },
 
 			-- Git
-			map("<leader>gc", "<cmd>Telescope git_commits<cr>", "Git Commits"),
-			map("<leader>gC", "<cmd>Telescope git_bcommits<cr>", "Buffer Git Commits"),
+			{ "<leader>gc", builtin.git_commits, desc = "Git Commits" },
+			{ "<leader>gb", builtin.git_branches, desc = "Git Branches" },
+			{ "<leader>gs", builtin.git_status, desc = "Git Status" },
 
 			-- Vim
-			map("<leader>fh", "<cmd>Telescope help_tags<cr>", "Help Tags"),
-			map("<leader>fk", "<cmd>Telescope keymaps<cr>", "Keymaps"),
-			map("<leader>fc", "<cmd>Telescope commands<cr>", "Commands"),
-			map("<leader>fC", "<cmd>Telescope command_history<cr>", "Command History"),
-			map("<leader>f/", "<cmd>Telescope search_history<cr>", "Search History"),
-			map("<leader>fR", "<cmd>Telescope registers<cr>", "Registers"),
-			map("<leader>fa", "<cmd>Telescope autocommands<cr>", "Autocommands"),
-			map("<leader>fH", "<cmd>Telescope highlights<cr>", "Highlights"),
-			map("<leader>fv", "<cmd>Telescope vim_options<cr>", "Vim Options"),
+			{ "<leader>vh", builtin.help_tags, desc = "Help Tags" },
+			{ "<leader>vk", builtin.keymaps, desc = "Keymaps" },
+			{ "<leader>vc", builtin.commands, desc = "Commands" },
+
+			-- Shortcuts
+			{ "<C-p>", builtin.find_files, desc = "Find Files" },
 		}
 	end,
 
-	config = function(_, opts)
+	config = function()
 		local telescope = require "telescope"
 		local actions = require "telescope.actions"
-		local state = require "telescope.actions.state"
+		local action_state = require "telescope.actions.state"
 
-		-- Copy path/value
-		local copy = function(prompt_bufnr)
-			local entry = state.get_selected_entry()
+		-- Simple copy path function
+		local copy_path = function(prompt_bufnr)
+			local entry = action_state.get_selected_entry()
 			if entry then
-				local target = entry.path or entry.value or entry.display
-				vim.fn.setreg("+", target)
-				vim.notify("Copied: " .. vim.fn.fnamemodify(target, ":t"), vim.log.levels.INFO)
+				local path = entry.path or entry.value or tostring(entry)
+				vim.fn.setreg("+", path)
+				actions.close(prompt_bufnr)
+				vim.notify("Copied: " .. vim.fn.fnamemodify(path, ":t"))
 			end
 		end
 
-		-- Open in splits
-		local split_open = function(prompt_bufnr, cmd)
-			local entry = state.get_selected_entry()
-			actions.close(prompt_bufnr)
-			if entry then
-				vim.cmd(cmd .. " " .. vim.fn.fnameescape(entry.path))
-			end
-		end
-
-		telescope.setup(vim.tbl_deep_extend("force", opts, {
+		telescope.setup {
 			defaults = {
-				prompt_prefix = "  ",
-				selection_caret = "➤ ",
-				multi_icon = "✓",
+				-- Minimal UI
+				prompt_prefix = " ",
+				selection_caret = " ",
+				entry_prefix = " ",
+				multi_icon = "",
+
+				-- Layout config
 				layout_strategy = "horizontal",
 				layout_config = {
-					horizontal = { prompt_position = "top", preview_width = 0.6 },
-					vertical = { prompt_position = "top", preview_height = 0.6 },
+					horizontal = {
+						prompt_position = "top",
+						preview_width = 0.55,
+						width = 0.9,
+						height = 0.8,
+					},
 				},
 				sorting_strategy = "ascending",
+
+				-- Path display - fix indentation issue
 				path_display = { "truncate" },
+				dynamic_preview_title = true,
+
+				-- File ignore patterns
 				file_ignore_patterns = {
 					"%.git/",
 					"node_modules/",
 					"__pycache__/",
-					"%.tmp",
+					"%.pyc",
 					"dist/",
 					"build/",
-					"%.min%.js",
-					"%.min%.css",
-					"package%-lock.json",
-					"yarn.lock",
+					"target/",
+					"%.lock",
 				},
+
+				-- Preview config
+				preview = {
+					filesize_limit = 5,
+					timeout = 250,
+				},
+
+				-- Simplified key mappings
 				mappings = {
 					i = {
 						["<C-j>"] = actions.move_selection_next,
 						["<C-k>"] = actions.move_selection_previous,
 						["<C-q>"] = actions.smart_send_to_qflist + actions.open_qflist,
-						["<C-y>"] = copy,
-						["<C-s>"] = function(bufnr)
-							split_open(bufnr, "split")
-						end,
-						["<C-v>"] = function(bufnr)
-							split_open(bufnr, "vsplit")
-						end,
+						["<C-y>"] = copy_path,
+						["<C-s>"] = actions.select_horizontal,
+						["<C-v>"] = actions.select_vertical,
 						["<C-t>"] = actions.select_tab,
-						["<C-f>"] = actions.preview_scrolling_down,
-						["<C-b>"] = actions.preview_scrolling_up,
+						["<C-u>"] = actions.preview_scrolling_up,
+						["<C-d>"] = actions.preview_scrolling_down,
 						["<C-/>"] = actions.which_key,
+						["<ESC>"] = actions.close,
 					},
 					n = {
+						["j"] = actions.move_selection_next,
+						["k"] = actions.move_selection_previous,
 						["q"] = actions.close,
-						["<esc>"] = actions.close,
-						["<C-d>"] = actions.delete_buffer,
-						["<C-y>"] = copy,
-						["<C-s>"] = function(bufnr)
-							split_open(bufnr, "split")
-						end,
-						["<C-v>"] = function(bufnr)
-							split_open(bufnr, "vsplit")
-						end,
+						["<ESC>"] = actions.close,
+						["<C-y>"] = copy_path,
+						["s"] = actions.select_horizontal,
+						["v"] = actions.select_vertical,
+						["t"] = actions.select_tab,
+						["<C-u>"] = actions.preview_scrolling_up,
+						["<C-d>"] = actions.preview_scrolling_down,
+						["?"] = actions.which_key,
+					},
+				},
+
+				-- Color config
+				color_devicons = true,
+				use_less = true,
+				set_env = { ["COLORTERM"] = "truecolor" },
+			},
+
+			pickers = {
+				find_files = {
+					hidden = false,
+					no_ignore = false,
+				},
+				live_grep = {
+					only_sort_text = true,
+				},
+				buffers = {
+					show_all_buffers = true,
+					sort_lastused = true,
+					theme = "dropdown",
+					previewer = false,
+					mappings = {
+						i = {
+							["<C-d>"] = actions.delete_buffer + actions.move_to_top,
+						},
+					},
+				},
+				oldfiles = {
+					only_cwd = true,
+				},
+				git_files = {
+					show_untracked = true,
+				},
+				lsp_references = {
+					trim_text = true,
+					show_line = false,
+				},
+				diagnostics = {
+					theme = "ivy",
+					initial_mode = "normal",
+					layout_config = {
+						preview_cutoff = 9999,
 					},
 				},
 			},
-		}))
 
-		-- Load extensions
-		for _, ext in ipairs { "fzf", "ui-select" } do
-			pcall(telescope.load_extension, ext)
-		end
+			extensions = {
+				fzf = {
+					fuzzy = true,
+					override_generic_sorter = true,
+					override_file_sorter = true,
+					case_mode = "smart_case",
+				},
+				["ui-select"] = {
+					require("telescope.themes").get_dropdown {
+						winblend = 10,
+						width = 0.5,
+						previewer = false,
+					},
+				},
+			},
+		}
+
+		-- Safely load extensions
+		pcall(telescope.load_extension, "fzf")
+		pcall(telescope.load_extension, "ui-select")
 	end,
 }

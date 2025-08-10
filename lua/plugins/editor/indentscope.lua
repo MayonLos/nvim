@@ -1,416 +1,263 @@
 return {
-    "lukas-reineke/indent-blankline.nvim",
-    main = "ibl",
-    event = { "BufReadPost", "BufNewFile", "BufWritePre" },
-    dependencies = {
-        "nvim-treesitter/nvim-treesitter",
-    },
-    opts = function()
-        local colors = {
-            level1 = "#4B5563",
-            level2 = "#6B7280",
-            level3 = "#9CA3AF",
-            level4 = "#D1D5DB",
-            scope = "#45475A",
-            error = "#EF4444",
-            warning = "#F59E0B",
-        }
+	"lukas-reineke/indent-blankline.nvim",
+	main = "ibl",
+	event = { "BufReadPost", "BufNewFile" },
+	dependencies = { "nvim-treesitter/nvim-treesitter" },
 
-        local indent_highlights = {
-            "IBLIndent1",
-            "IBLIndent2",
-            "IBLIndent3",
-            "IBLIndent4",
-        }
+	opts = function()
+		-- Optimized color scheme - more modern visual effect
+		local colors = {
+			indent = {
+				"#374151", -- Softer gray
+				"#4B5563",
+				"#6B7280",
+				"#9CA3AF",
+			},
+			scope = "#60A5FA", -- Brighter blue for scope
+			scope_error = "#F87171", -- Error state
+			scope_warn = "#FBBF24", -- Warning state
+		}
 
-        local scope_highlights = {
-            "IBLScope",
-            "IBLScopeError",
-            "IBLScopeWarning",
-        }
+		-- Performance-optimized exclude list
+		local exclude_ft = {
+			"help",
+			"man",
+			"markdown",
+			"text",
+			"txt",
+			"lazy",
+			"packer",
+			"mason",
+			"lspinfo",
+			"dashboard",
+			"alpha",
+			"startify",
+			"neo-tree",
+			"NvimTree",
+			"oil",
+			"netrw",
+			"toggleterm",
+			"terminal",
+			"TelescopePrompt",
+			"TelescopeResults",
+			"Trouble",
+			"qf",
+			"gitcommit",
+			"fugitive",
+			"notify",
+			"aerial",
+			"outline",
+			"undotree",
+			"tagbar",
+			"vista",
+			"checkhealth",
+			"lsp-installer",
+			"null-ls-info",
+			"DiffviewFiles",
+			"org",
+			"noice",
+		}
 
-        local function setup_highlights()
-            vim.api.nvim_set_hl(0, "IBLIndent1", { fg = colors.level1 })
-            vim.api.nvim_set_hl(0, "IBLIndent2", { fg = colors.level2 })
-            vim.api.nvim_set_hl(0, "IBLIndent3", { fg = colors.level3 })
-            vim.api.nvim_set_hl(0, "IBLIndent4", { fg = colors.level4 })
+		local exclude_bt = {
+			"terminal",
+			"nofile",
+			"quickfix",
+			"prompt",
+			"popup",
+			"acwrite",
+		}
 
-            -- Scope highlights
-            vim.api.nvim_set_hl(0, "IBLScope", { fg = colors.scope, bold = true })
-            vim.api.nvim_set_hl(0, "IBLScopeError", { fg = colors.error, bold = true })
-            vim.api.nvim_set_hl(0, "IBLScopeWarning", { fg = colors.warning, bold = true })
-        end
+		-- Smart highlight group setup
+		local function setup_highlights()
+			-- Gradient indent lines
+			for i, color in ipairs(colors.indent) do
+				vim.api.nvim_set_hl(0, "IBLIndent" .. i, { fg = color })
+			end
 
-        setup_highlights()
+			-- Scope highlight
+			vim.api.nvim_set_hl(0, "IBLScope", {
+				fg = colors.scope,
+				bold = true,
+				nocombine = true,
+			})
+			vim.api.nvim_set_hl(0, "IBLScopeError", {
+				fg = colors.scope_error,
+				bold = true,
+			})
+			vim.api.nvim_set_hl(0, "IBLScopeWarn", {
+				fg = colors.scope_warn,
+				bold = true,
+			})
+		end
 
-        -- Comprehensive exclude list for modern development workflow
-        local exclude_filetypes = {
-            -- Documentation and help
-            "help",
-            "man",
-            "markdown",
-            "text",
-            "txt",
+		setup_highlights()
 
-            -- Plugin managers and tools
-            "lazy",
-            "packer",
-            "mason",
-            "lspinfo",
-            "null-ls-info",
+		return {
+			enabled = true,
+			debounce = 200, -- Performance: reduce update frequency
+			viewport_buffer = {
+				min = 30, -- Optimized viewport buffer
+				max = 500,
+			},
 
-            -- Start screens and dashboards
-            "dashboard",
-            "starter",
-            "alpha",
-            "startify",
+			indent = {
+				char = "▏",
+				tab_char = "▏",
+				smart_indent_cap = true,
+				priority = 2,
+				repeat_linebreak = true,
+			},
 
-            -- File explorers
-            "neo-tree",
-            "NvimTree",
-            "oil",
-            "dirvish",
-            "netrw",
+			whitespace = {
+				highlight = { "IBLIndent1", "IBLIndent2", "IBLIndent3", "IBLIndent4" },
+				remove_blankline_trail = true,
+			},
 
-            -- Terminal and REPL
-            "toggleterm",
-            "lazyterm",
-            "terminal",
-            "fterm",
+			scope = {
+				enabled = true,
+				char = "▎",
+				show_start = false,
+				show_end = false,
+				show_exact_scope = true,
+				injected_languages = true,
+				highlight = { "IBLScope" },
+				priority = 1024,
+				-- Optimized node type detection
+				include = {
+					node_type = {
+						["*"] = {
+							"class",
+							"function",
+							"method",
+							"if_statement",
+							"while_statement",
+							"for_statement",
+							"try_statement",
+							"block",
+							"compound_statement",
+							"object",
+							"table",
+						},
+						lua = { "chunk", "do_statement", "function_call", "table_constructor" },
+						python = { "with_statement", "match_statement", "async_with_statement" },
+						javascript = { "object_pattern", "jsx_element", "async_function" },
+						typescript = { "interface_declaration", "type_alias_declaration" },
+						rust = { "impl_item", "trait_item", "match_expression" },
+						go = { "type_declaration", "select_statement" },
+						cpp = { "class_specifier", "namespace_definition", "template_declaration" },
+					},
+				},
+			},
 
-            -- Search and selection
-            "TelescopePrompt",
-            "TelescopeResults",
-            "TelescopePreview",
-            "fzf",
-            "ctrlp",
+			exclude = {
+				filetypes = exclude_ft,
+				buftypes = exclude_bt,
+			},
+		}
+	end,
 
-            -- Debugging and diagnostics
-            "Trouble",
-            "trouble",
-            "qf",
-            "loclist",
+	config = function(_, opts)
+		local ibl = require "ibl"
+		local hooks = require "ibl.hooks"
 
-            -- Git integration
-            "gitcommit",
-            "gitrebase",
-            "fugitive",
-            "gitconfig",
-            "DiffviewFiles",
-            "DiffviewFileHistory",
+		ibl.setup(opts)
 
-            -- Language servers and diagnostics
-            "lsp-installer",
-            "lspinfo",
-            "mason",
-            "null-ls-info",
+		-- Smart color theme adaptation
+		hooks.register(hooks.type.HIGHLIGHT_SETUP, function()
+			local bg = vim.o.background
+			local colors = bg == "dark"
+					and {
+						indent = { "#374151", "#4B5563", "#6B7280", "#9CA3AF" },
+						scope = "#60A5FA",
+					}
+				or {
+					indent = { "#E5E7EB", "#D1D5DB", "#9CA3AF", "#6B7280" },
+					scope = "#3B82F6",
+				}
 
-            -- Note taking and organization
-            "org",
-            "orgagenda",
-            "vimwiki",
+			for i, color in ipairs(colors.indent) do
+				vim.api.nvim_set_hl(0, "IBLIndent" .. i, { fg = color })
+			end
+			vim.api.nvim_set_hl(0, "IBLScope", { fg = colors.scope, bold = true })
+		end)
 
-            -- System and utility
-            "checkhealth",
-            "notify",
-            "noice",
-            "aerial",
-            "undotree",
-            "vista",
-            "tagbar",
-            "outline",
-            "symbols-outline",
-        }
+		-- Enhanced scope highlighting
+		hooks.register(hooks.type.SCOPE_HIGHLIGHT, hooks.builtin.scope_highlight_from_extmark)
 
-        local exclude_buftypes = {
-            "terminal",
-            "nofile",
-            "quickfix",
-            "prompt",
-            "popup",
-            "acwrite",
-        }
+		-- Smart performance optimization
+		hooks.register(hooks.type.WHITESPACE, function(_, bufnr, _, whitespace_tbl)
+			local stats = vim.api.nvim_buf_get_changedtick(bufnr)
+			local line_count = vim.api.nvim_buf_line_count(bufnr)
 
-        return {
-            indent = {
-                char = "▏", -- Modern thin line (similar to VS Code)
-                tab_char = "▏",
-                smart_indent_cap = true,
-                priority = 1,
-                repeat_linebreak = true,
-            },
-            whitespace = {
-                highlight = indent_highlights,
-                remove_blankline_trail = true, -- Clean appearance
-            },
-            scope = {
-                enabled = true,
-                char = "▎", -- Slightly thicker for active scope
-                show_start = false, -- Remove horizontal start line
-                show_end = false,
-                show_exact_scope = true, -- More precise scope detection
-                injected_languages = true, -- Support embedded languages
-                highlight = scope_highlights,
-                priority = 1024,
-                include = {
-                    node_type = {
-                        ["*"] = {
-                            -- Core structural elements
-                            "class",
-                            "struct",
-                            "interface",
-                            "enum",
-                            "union",
-                            "function",
-                            "method",
-                            "constructor",
-                            "destructor",
-                            "closure",
-                            "arrow_function",
-                            "lambda",
+			-- Large file optimization strategy
+			if line_count > 10000 then
+				return {} -- Disable for very large files
+			elseif line_count > 5000 then
+				-- Sample display, reduce computation load
+				local sampled = {}
+				for i = 1, #whitespace_tbl, 2 do
+					sampled[#sampled + 1] = whitespace_tbl[i]
+				end
+				return sampled
+			end
 
-                            -- Control flow
-                            "^if",
-                            "^while",
-                            "^for",
-                            "^do",
-                            "^switch",
-                            "else_clause",
-                            "elif_clause",
-                            "elseif_clause",
-                            "case",
-                            "default",
-                            "when",
+			return whitespace_tbl
+		end)
 
-                            -- Exception handling
-                            "try",
-                            "catch",
-                            "finally",
-                            "except",
-                            "rescue",
-                            "ensure",
-                            "defer",
+		-- Convenient commands
+		vim.api.nvim_create_user_command("IBLToggle", function()
+			local config = require("ibl.config").get_config(0)
+			ibl.setup_buffer(0, { enabled = not config.enabled })
+			vim.notify("Indent lines " .. (config.enabled and "disabled" or "enabled"))
+		end, { desc = "Toggle indent lines" })
 
-                            -- Data structures
-                            "object",
-                            "table",
-                            "array",
-                            "list",
-                            "dict",
-                            "map",
-                            "set",
-                            "tuple",
-                            "record",
-                            "block",
-                            "body",
-                            "compound_statement",
+		vim.api.nvim_create_user_command("IBLScopeToggle", function()
+			local config = require("ibl.config").get_config(0)
+			local scope_enabled = config.scope and config.scope.enabled
+			ibl.setup_buffer(0, { scope = { enabled = not scope_enabled } })
+			vim.notify("Scope highlighting " .. (scope_enabled and "disabled" or "enabled"))
+		end, { desc = "Toggle scope highlighting" })
 
-                            -- Functions and calls
-                            "arguments",
-                            "parameters",
-                            "argument_list",
-                            "parameter_list",
-                            "call_expression",
+		-- Smart filetype adaptation
+		local ft_configs = {
+			json = { scope = { enabled = false } },
+			yaml = { scope = { enabled = false } },
+			python = {
+				indent = { smart_indent_cap = true },
+				scope = { show_exact_scope = true },
+			},
+			markdown = { enabled = false },
+		}
 
-                            -- Statements
-                            "if_statement",
-                            "while_statement",
-                            "for_statement",
-                            "return_statement",
-                            "expression_statement",
-                            "assignment",
-                            "declaration",
+		vim.api.nvim_create_autocmd("FileType", {
+			callback = function(args)
+				local ft = args.match
+				local config = ft_configs[ft]
+				if config then
+					ibl.setup_buffer(0, config)
+				end
+			end,
+			desc = "Apply filetype-specific indent line settings",
+		})
 
-                            -- Modules and imports
-                            "import",
-                            "export",
-                            "module",
-                            "namespace",
-                            "package",
-                            "use",
-                            "include",
-                            "require",
-                        },
+		-- Memory cleanup optimization
+		vim.api.nvim_create_autocmd({ "BufDelete", "BufWipeout" }, {
+			callback = function(args)
+				if vim.api.nvim_buf_is_valid(args.buf) then
+					pcall(ibl.debounced_refresh, args.buf)
+				end
+			end,
+			desc = "Cleanup indent-blankline resources",
+		})
 
-                        -- Language-specific optimizations
-                        lua = {
-                            "chunk",
-                            "do_statement",
-                            "repeat_statement",
-                            "local_function",
-                            "function_call",
-                            "table_constructor",
-                        },
-                        python = {
-                            "with_statement",
-                            "match_statement",
-                            "async_with_statement",
-                            "list_comprehension",
-                            "dictionary_comprehension",
-                            "set_comprehension",
-                            "generator_expression",
-                        },
-                        javascript = {
-                            "object_pattern",
-                            "array_pattern",
-                            "template_literal",
-                            "jsx_element",
-                            "jsx_fragment",
-                            "async_function",
-                        },
-                        typescript = {
-                            "interface_declaration",
-                            "type_alias_declaration",
-                            "namespace_declaration",
-                            "generic_type",
-                        },
-                        rust = {
-                            "impl_item",
-                            "trait_item",
-                            "macro_invocation",
-                            "match_expression",
-                            "closure_expression",
-                        },
-                        go = {
-                            "type_declaration",
-                            "method_declaration",
-                            "select_statement",
-                            "type_switch_statement",
-                        },
-                        cpp = {
-                            "class_specifier",
-                            "namespace_definition",
-                            "template_declaration",
-                            "lambda_expression",
-                        },
-                    },
-                },
-            },
-            exclude = {
-                filetypes = exclude_filetypes,
-                buftypes = exclude_buftypes,
-            },
-        }
-    end,
-
-    config = function(_, opts)
-        local ok, ibl = pcall(require, "ibl")
-        if not ok then
-            vim.notify("Failed to load indent-blankline.nvim", vim.log.levels.ERROR)
-            return
-        end
-
-        ibl.setup(opts)
-
-        local hooks = require("ibl.hooks")
-
-        -- Re-apply highlights on colorscheme changes
-        hooks.register(hooks.type.HIGHLIGHT_SETUP, function()
-            local colors = {
-                level1 = "#4B5563",
-                level2 = "#6B7280",
-                level3 = "#9CA3AF",
-                level4 = "#D1D5DB",
-                scope = "#3B82F6",
-                error = "#EF4444",
-                warning = "#F59E0B",
-            }
-
-            vim.api.nvim_set_hl(0, "IBLIndent1", { fg = colors.level1 })
-            vim.api.nvim_set_hl(0, "IBLIndent2", { fg = colors.level2 })
-            vim.api.nvim_set_hl(0, "IBLIndent3", { fg = colors.level3 })
-            vim.api.nvim_set_hl(0, "IBLIndent4", { fg = colors.level4 })
-            vim.api.nvim_set_hl(0, "IBLScope", { fg = colors.scope, bold = true })
-            vim.api.nvim_set_hl(0, "IBLScopeError", { fg = colors.error, bold = true })
-            vim.api.nvim_set_hl(0, "IBLScopeWarning", { fg = colors.warning, bold = true })
-        end)
-
-        -- Enhanced scope highlighting without horizontal lines
-        hooks.register(hooks.type.SCOPE_HIGHLIGHT, hooks.builtin.scope_highlight_from_extmark)
-
-        -- Smart performance optimization based on file characteristics
-        hooks.register(hooks.type.WHITESPACE, function(_, bufnr, _, whitespace_tbl)
-            local line_count = vim.api.nvim_buf_line_count(bufnr)
-            local file_size = vim.api.nvim_buf_get_offset(bufnr, line_count)
-
-            -- Aggressive optimization for very large files
-            if line_count > 15000 or file_size > 1048576 then -- > 1MB
-                return {}
-            elseif line_count > 8000 or file_size > 524288 then -- > 512KB
-                -- Sample every 3rd line for large files
-                local reduced_tbl = {}
-                for i = 1, #whitespace_tbl, 3 do
-                    reduced_tbl[#reduced_tbl + 1] = whitespace_tbl[i]
-                end
-                return reduced_tbl
-            elseif line_count > 3000 then
-                -- Sample every 2nd line for medium files
-                local reduced_tbl = {}
-                for i = 1, #whitespace_tbl, 2 do
-                    reduced_tbl[#reduced_tbl + 1] = whitespace_tbl[i]
-                end
-                return reduced_tbl
-            end
-
-            return whitespace_tbl
-        end)
-
-        -- Modern IDE-style commands and keymaps
-        vim.api.nvim_create_user_command("IndentLinesToggle", function()
-            local enabled = require("ibl.config").get_config(0).enabled
-            require("ibl").setup_buffer(0, { enabled = not enabled })
-            vim.notify(
-                string.format("Indent lines %s", enabled and "disabled" or "enabled"),
-                vim.log.levels.INFO
-            )
-        end, { desc = "Toggle indent lines for current buffer" })
-
-        vim.api.nvim_create_user_command("IndentScopeToggle", function()
-            local config = require("ibl.config").get_config(0)
-            local scope_enabled = config.scope and config.scope.enabled
-            require("ibl").setup_buffer(0, {
-                scope = { enabled = not scope_enabled },
-            })
-            vim.notify(
-                string.format("Scope highlighting %s", scope_enabled and "disabled" or "enabled"),
-                vim.log.levels.INFO
-            )
-        end, { desc = "Toggle scope highlighting for current buffer" })
-
-        -- Context-aware auto-configuration
-        vim.api.nvim_create_autocmd("FileType", {
-            pattern = { "json", "jsonc", "yaml", "yml" },
-            callback = function()
-                -- Disable scope for data files (no logical scope)
-                require("ibl").setup_buffer(0, {
-                    scope = { enabled = false },
-                })
-            end,
-            desc = "Disable scope highlighting for data files",
-        })
-
-        vim.api.nvim_create_autocmd("FileType", {
-            pattern = { "python" },
-            callback = function()
-                -- Python-specific optimization: highlight significant indentation
-                require("ibl").setup_buffer(0, {
-                    indent = { char = "▏", smart_indent_cap = true },
-                    scope = { show_exact_scope = true },
-                })
-            end,
-            desc = "Python-specific indent line configuration",
-        })
-
-        -- Memory cleanup for inactive buffers
-        vim.api.nvim_create_autocmd("BufWinLeave", {
-            callback = function(args)
-                -- Clean up resources when buffer is no longer visible
-                local bufnr = args.buf
-                if vim.api.nvim_buf_is_valid(bufnr) then
-                    require("ibl").debounced_refresh(bufnr)
-                end
-            end,
-            desc = "Cleanup indent-blankline resources for hidden buffers",
-        })
-    end,
+		-- On-demand loading optimization
+		vim.api.nvim_create_autocmd("VimResized", {
+			callback = function()
+				vim.schedule(function()
+					ibl.refresh_all()
+				end)
+			end,
+			desc = "Refresh indent lines on window resize",
+		})
+	end,
 }
