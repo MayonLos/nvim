@@ -38,7 +38,6 @@ return {
 					nvimtree = true,
 					treesitter = true,
 					notify = true,
-					telescope = true,
 				},
 			}
 

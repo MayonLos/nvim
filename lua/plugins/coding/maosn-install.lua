@@ -23,10 +23,6 @@ return {
 			"luacheck", -- Lua linter
 			"markdownlint", -- Markdown linter
 			"cpplint", --C/C++ linter
-
-			-- ✅ DAP Adapters (debug support)
-			"codelldb", -- C/C++ debugger
-			"debugpy", -- Python debugger
 		},
 
 		-- Installation settings
