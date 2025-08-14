@@ -1,36 +1,10 @@
-local M = {}
+local M, config = {}, {}
 
--- Configuration with better defaults and more options
-local default_config = {
-	-- Yank highlighting settings
-	yank = {
-		enabled = true,
-		higroup = "IncSearch",
-		timeout = 200,
-		priority = 150,
-		on_macro = true,
-		on_silent = true,
-	},
-
-	-- Cursor position restoration
-	cursor_restore = {
-		enabled = true,
-		exclude_filetypes = { "gitcommit", "gitrebase" },
-	},
-
-	-- Comment continuation settings
-	comment_continuation = {
-		disable = true,
-		preserve_filetypes = {}, -- Filetypes where comment continuation should remain enabled
-	},
-
-	-- Auto-directory creation
-	auto_mkdir = {
-		enabled = true,
-		verbose = false, -- Show message when directories are created
-	},
-
-	-- Terminal settings
+local defaults = {
+	yank = { enabled = true, higroup = "IncSearch", timeout = 200, priority = 150, on_macro = true, on_silent = true },
+	cursor_restore = { enabled = true, exclude_filetypes = { "gitcommit", "gitrebase" } },
+	comment_continuation = { disable = true, preserve_filetypes = { "gitcommit", "markdown" } },
+	auto_mkdir = { enabled = true, verbose = false },
 	terminal = {
 		enabled = true,
 		auto_insert = true,
@@ -38,46 +12,70 @@ local default_config = {
 		disable_signcolumn = true,
 		enable_wrap = true,
 	},
-
-	-- Auto-save settings
 	auto_save = {
 		enabled = true,
-		events = { "FocusLost", "BufLeave" },
-		exclude_filetypes = { "oil" }, -- Exclude certain filetypes
+		events = { "FocusLost", "CursorHold" },
+		debounce_ms = 300,
+		exclude_filetypes = { "oil" },
 		show_message = false,
 	},
 }
 
-local config = {}
-
--- Utility functions
-local function is_excluded_filetype(filetypes, current_ft)
-	for _, ft in ipairs(filetypes) do
-		if ft == current_ft then
+local function is_excluded(ft_list, ft)
+	for _, v in ipairs(ft_list or {}) do
+		if v == ft then
 			return true
 		end
 	end
 	return false
 end
 
-local function safe_write()
-	local ok, err = pcall(vim.cmd, "silent! write")
-	if not ok and config.auto_save.show_message then
-		vim.notify("Auto-save failed: " .. (err or "unknown error"), vim.log.levels.WARN)
-	elseif ok and config.auto_save.show_message then
-		vim.notify("File auto-saved", vim.log.levels.INFO)
+local function should_write(bufnr)
+	if vim.bo[bufnr].modified ~= true then
+		return false
+	end
+	if vim.bo[bufnr].readonly then
+		return false
+	end
+	local name = vim.api.nvim_buf_get_name(bufnr)
+	if name == "" then
+		return false
+	end
+	if name:match "^%w+://" then
+		return false
+	end
+	if is_excluded(config.auto_save.exclude_filetypes, vim.bo[bufnr].filetype) then
+		return false
+	end
+	return true
+end
+
+local function write_buf(bufnr)
+	if not should_write(bufnr) then
+		return
+	end
+	local ok, err = pcall(function()
+		vim.api.nvim_buf_call(bufnr, function()
+			vim.cmd "silent keepalt write"
+		end)
+	end)
+	if config.auto_save.show_message then
+		if ok then
+			vim.notify("Auto-saved: " .. vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":t"))
+		else
+			vim.notify("Auto-save failed: " .. (err or "unknown"), vim.log.levels.WARN)
+		end
 	end
 end
 
--- Setup autocmds
-local function setup_yank_highlight(augroup)
+-- ---------- features ----------
+local function setup_yank(au)
 	if not config.yank.enabled then
 		return
 	end
-
 	vim.api.nvim_create_autocmd("TextYankPost", {
-		group = augroup,
-		desc = "Highlight yanked text with configurable options",
+		group = au,
+		desc = "Highlight yanked text",
 		callback = function()
 			vim.highlight.on_yank {
 				higroup = config.yank.higroup,
@@ -90,167 +88,149 @@ local function setup_yank_highlight(augroup)
 	})
 end
 
-local function setup_cursor_restore(augroup)
+local function setup_cursor_restore(au)
 	if not config.cursor_restore.enabled then
 		return
 	end
-
 	vim.api.nvim_create_autocmd("BufReadPost", {
-		group = augroup,
-		desc = "Restore cursor position to last known location",
+		group = au,
+		desc = "Restore last cursor position",
 		callback = function()
-			-- Skip for excluded filetypes
-			if is_excluded_filetype(config.cursor_restore.exclude_filetypes, vim.bo.filetype) then
+			if is_excluded(config.cursor_restore.exclude_filetypes, vim.bo.filetype) then
 				return
 			end
-
 			local mark = vim.api.nvim_buf_get_mark(0, '"')
-			local line_count = vim.api.nvim_buf_line_count(0)
-
-			-- Validate mark position
-			if mark[1] > 0 and mark[1] <= line_count then
-				local ok = pcall(vim.api.nvim_win_set_cursor, 0, mark)
-				if ok then
-					-- Center the line in the window
-					vim.cmd "normal! zz"
+			local lines = vim.api.nvim_buf_line_count(0)
+			if mark[1] > 0 and mark[1] <= lines then
+				if pcall(vim.api.nvim_win_set_cursor, 0, mark) then
+					vim.cmd.normal "zz"
 				end
 			end
 		end,
 	})
 end
 
-local function setup_comment_continuation(augroup)
+local function setup_comment(au)
 	if not config.comment_continuation.disable then
 		return
 	end
-
 	vim.api.nvim_create_autocmd("FileType", {
-		group = augroup,
-		desc = "Configure comment continuation behavior",
+		group = au,
+		desc = "Disable comment continuation",
 		callback = function()
-			-- Skip if filetype should preserve comment continuation
-			if is_excluded_filetype(config.comment_continuation.preserve_filetypes, vim.bo.filetype) then
+			if is_excluded(config.comment_continuation.preserve_filetypes, vim.bo.filetype) then
 				return
 			end
-
-			-- Remove comment continuation options
 			vim.opt_local.formatoptions:remove { "c", "r", "o" }
 		end,
 	})
 end
 
-local function setup_auto_mkdir(augroup)
+local function setup_mkdir(au)
 	if not config.auto_mkdir.enabled then
 		return
 	end
-
 	vim.api.nvim_create_autocmd("BufWritePre", {
-		group = augroup,
-		desc = "Create parent directories automatically when saving",
-		callback = function(event)
-			local file = vim.uv.fs_realpath(event.match) or event.match
+		group = au,
+		desc = "Create parent directory on save",
+		callback = function(ev)
+			local name = ev.match or ""
+			if name:match "^%w+://" then
+				return
+			end
+			local file = (vim.uv.fs_realpath(name) or name)
 			local dir = vim.fn.fnamemodify(file, ":p:h")
-
-			-- Check if directory creation is needed
-			if vim.fn.isdirectory(dir) == 0 then
+			if dir ~= "" and vim.fn.isdirectory(dir) == 0 then
 				local ok, err = pcall(vim.fn.mkdir, dir, "p")
 				if not ok then
-					vim.notify("Failed to create directory: " .. (err or "unknown error"), vim.log.levels.ERROR)
+					vim.notify("mkdir failed: " .. (err or "unknown"), vim.log.levels.ERROR)
 				elseif config.auto_mkdir.verbose then
-					vim.notify("Created directory: " .. dir, vim.log.levels.INFO)
+					vim.notify("Created: " .. dir)
 				end
 			end
 		end,
 	})
 end
 
-local function setup_terminal_config(augroup)
+local function setup_terminal(au)
 	if not config.terminal.enabled then
 		return
 	end
-
 	vim.api.nvim_create_autocmd("TermOpen", {
-		group = augroup,
-		desc = "Configure terminal buffer appearance and behavior",
+		group = au,
+		desc = "Terminal UI tweaks",
 		callback = function()
 			if config.terminal.disable_numbers then
 				vim.opt_local.number = false
 				vim.opt_local.relativenumber = false
 			end
-
 			if config.terminal.disable_signcolumn then
 				vim.opt_local.signcolumn = "no"
 			end
-
 			if config.terminal.enable_wrap then
 				vim.opt_local.wrap = true
 			end
-
-			-- Auto-enter insert mode
 			if config.terminal.auto_insert then
-				vim.schedule(function()
-					if vim.api.nvim_get_current_buf() == vim.fn.bufnr "%" then
-						vim.cmd "startinsert"
-					end
-				end)
+				vim.cmd "startinsert"
 			end
 		end,
 	})
 end
 
-local function setup_auto_save(augroup)
+local auto_save_timer
+local function setup_auto_save(au)
 	if not config.auto_save.enabled then
 		return
 	end
-
 	vim.api.nvim_create_autocmd(config.auto_save.events, {
-		group = augroup,
-		desc = "Auto-save modified buffers",
-		callback = function()
-			-- Check if buffer should be saved
-			local should_save = vim.bo.modified
-				and not vim.bo.readonly
-				and vim.fn.expand "%" ~= ""
-				and not is_excluded_filetype(config.auto_save.exclude_filetypes, vim.bo.filetype)
-
-			if should_save then
-				safe_write()
+		group = au,
+		desc = "Debounced auto-save",
+		callback = function(args)
+			local bufnr = args.buf or vim.api.nvim_get_current_buf()
+			if auto_save_timer then
+				auto_save_timer:stop()
+				auto_save_timer:close()
+				auto_save_timer = nil
 			end
+			auto_save_timer = vim.uv.new_timer()
+			auto_save_timer:start(config.auto_save.debounce_ms, 0, function()
+				vim.schedule(function()
+					if auto_save_timer then
+						auto_save_timer:stop()
+						auto_save_timer:close()
+						auto_save_timer = nil
+					end
+					if vim.api.nvim_buf_is_valid(bufnr) then
+						write_buf(bufnr)
+					end
+				end)
+			end)
 		end,
 	})
 end
 
--- Main setup function
-function M.setup(user_config)
-	-- Merge user configuration with defaults
-	config = vim.tbl_deep_extend("force", default_config, user_config or {})
-
-	-- Create augroup with clear option
-	local augroup = vim.api.nvim_create_augroup("EnhancedEditor", { clear = true })
-
-	-- Setup all features
-	setup_yank_highlight(augroup)
-	setup_cursor_restore(augroup)
-	setup_comment_continuation(augroup)
-	setup_auto_mkdir(augroup)
-	setup_terminal_config(augroup)
-	setup_auto_save(augroup)
+-- ---------- public ----------
+function M.setup(user)
+	config = vim.tbl_deep_extend("force", defaults, user or {})
+	local au = vim.api.nvim_create_augroup("EnhancedEditor", { clear = true })
+	setup_yank(au)
+	setup_cursor_restore(au)
+	setup_comment(au)
+	setup_mkdir(au)
+	setup_terminal(au)
+	setup_auto_save(au)
 end
 
--- Utility functions for runtime configuration changes
 function M.toggle_auto_save()
 	config.auto_save.enabled = not config.auto_save.enabled
-	local status = config.auto_save.enabled and "enabled" or "disabled"
-	vim.notify("Auto-save " .. status, vim.log.levels.INFO)
+	vim.notify(("Auto-save %s"):format(config.auto_save.enabled and "enabled" or "disabled"))
 end
 
 function M.toggle_yank_highlight()
 	config.yank.enabled = not config.yank.enabled
-	local status = config.yank.enabled and "enabled" or "disabled"
-	vim.notify("Yank highlighting " .. status, vim.log.levels.INFO)
+	vim.notify(("Yank highlight %s"):format(config.yank.enabled and "enabled" or "disabled"))
 end
 
--- Get current configuration
 function M.get_config()
 	return vim.deepcopy(config)
 end
