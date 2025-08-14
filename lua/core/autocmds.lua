@@ -12,13 +12,6 @@ local defaults = {
 		disable_signcolumn = true,
 		enable_wrap = true,
 	},
-	auto_save = {
-		enabled = true,
-		events = { "FocusLost", "CursorHold" },
-		debounce_ms = 300,
-		exclude_filetypes = { "oil" },
-		show_message = false,
-	},
 }
 
 local function is_excluded(ft_list, ft)
@@ -28,44 +21,6 @@ local function is_excluded(ft_list, ft)
 		end
 	end
 	return false
-end
-
-local function should_write(bufnr)
-	if vim.bo[bufnr].modified ~= true then
-		return false
-	end
-	if vim.bo[bufnr].readonly then
-		return false
-	end
-	local name = vim.api.nvim_buf_get_name(bufnr)
-	if name == "" then
-		return false
-	end
-	if name:match "^%w+://" then
-		return false
-	end
-	if is_excluded(config.auto_save.exclude_filetypes, vim.bo[bufnr].filetype) then
-		return false
-	end
-	return true
-end
-
-local function write_buf(bufnr)
-	if not should_write(bufnr) then
-		return
-	end
-	local ok, err = pcall(function()
-		vim.api.nvim_buf_call(bufnr, function()
-			vim.cmd "silent keepalt write"
-		end)
-	end)
-	if config.auto_save.show_message then
-		if ok then
-			vim.notify("Auto-saved: " .. vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":t"))
-		else
-			vim.notify("Auto-save failed: " .. (err or "unknown"), vim.log.levels.WARN)
-		end
-	end
 end
 
 -- ---------- features ----------
@@ -177,38 +132,6 @@ local function setup_terminal(au)
 	})
 end
 
-local auto_save_timer
-local function setup_auto_save(au)
-	if not config.auto_save.enabled then
-		return
-	end
-	vim.api.nvim_create_autocmd(config.auto_save.events, {
-		group = au,
-		desc = "Debounced auto-save",
-		callback = function(args)
-			local bufnr = args.buf or vim.api.nvim_get_current_buf()
-			if auto_save_timer then
-				auto_save_timer:stop()
-				auto_save_timer:close()
-				auto_save_timer = nil
-			end
-			auto_save_timer = vim.uv.new_timer()
-			auto_save_timer:start(config.auto_save.debounce_ms, 0, function()
-				vim.schedule(function()
-					if auto_save_timer then
-						auto_save_timer:stop()
-						auto_save_timer:close()
-						auto_save_timer = nil
-					end
-					if vim.api.nvim_buf_is_valid(bufnr) then
-						write_buf(bufnr)
-					end
-				end)
-			end)
-		end,
-	})
-end
-
 -- ---------- public ----------
 function M.setup(user)
 	config = vim.tbl_deep_extend("force", defaults, user or {})
@@ -218,12 +141,6 @@ function M.setup(user)
 	setup_comment(au)
 	setup_mkdir(au)
 	setup_terminal(au)
-	setup_auto_save(au)
-end
-
-function M.toggle_auto_save()
-	config.auto_save.enabled = not config.auto_save.enabled
-	vim.notify(("Auto-save %s"):format(config.auto_save.enabled and "enabled" or "disabled"))
 end
 
 function M.toggle_yank_highlight()
