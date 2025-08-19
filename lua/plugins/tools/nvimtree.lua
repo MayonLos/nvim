@@ -1,31 +1,146 @@
 return {
-	"stevearc/oil.nvim",
-	lazy = false, -- Officially recommended not to lazy load
-	dependencies = { "nvim-tree/nvim-web-devicons" }, -- Optional: file icons
-	keys = {
-		{ "<leader>e", "<CMD>Oil --float<CR>", desc = "Open Oil file explorer (floating window)" },
+	{
+		"nvim-neo-tree/neo-tree.nvim",
+		branch = "v3.x",
+		cmd = { "Neotree" },
+		keys = {
+			{ "<leader>ee", "<cmd>Neotree toggle<cr>", desc = "Neo-tree: Toggle" },
+		},
+		dependencies = {
+			"nvim-lua/plenary.nvim",
+			"nvim-tree/nvim-web-devicons",
+			"MunifTanjim/nui.nvim",
+			{
+				"s1n7ax/nvim-window-picker",
+				opts = {
+					autoselect_one = true,
+					include_current = false,
+					filter_rules = {
+						bo = {
+							filetype = { "neo-tree", "neo-tree-popup", "notify" },
+							buftype = { "terminal", "quickfix" },
+						},
+					},
+				},
+			},
+		},
+
+		-- 关闭 netrw，防止与 neo-tree 冲突（如果你用 Oil 也建议关）
+		init = function()
+			vim.g.loaded_netrw = 1
+			vim.g.loaded_netrwPlugin = 1
+		end,
+
+		opts = {
+			close_if_last_window = true, -- 侧边栏是最后窗口时自动关闭
+			popup_border_style = "rounded",
+			enable_git_status = true,
+			enable_diagnostics = true,
+			use_libuv_file_watcher = true,
+
+			sources = { "filesystem", "buffers", "git_status", "document_symbols" },
+
+			source_selector = {
+				winbar = true,
+				content_layout = "center",
+				sources = {
+					{ source = "filesystem", display_name = " 󰉓 Files " },
+					{ source = "buffers", display_name = " 󰈚 Buffers " },
+					{ source = "git_status", display_name = " 󰊢 Git " },
+					{ source = "document_symbols", display_name = " 󰘦 LSP " },
+				},
+			},
+
+			default_component_configs = {
+				indent = { padding = 1, indent_size = 2, with_markers = true },
+				icon = { folder_closed = "", folder_open = "", folder_empty = "󰜌", default = "󰈚" },
+				modified = { symbol = "●" },
+				name = { trailing_slash = false, use_git_status_colors = true },
+				git_status = {
+					symbols = {
+						added = " ",
+						modified = " ",
+						deleted = " ",
+						renamed = " ",
+						untracked = " ",
+						ignored = " ",
+						unstaged = " ",
+						staged = " ",
+						conflict = " ",
+					},
+				},
+				diagnostics = { symbols = { hint = "󰌶 ", info = " ", warn = " ", error = " " } },
+			},
+
+			filesystem = {
+				bind_to_cwd = true,
+				follow_current_file = { enabled = true, leave_dirs_open = false },
+				group_empty_dirs = true,
+				use_libuv_file_watcher = true,
+				filtered_items = {
+					visible = false,
+					hide_dotfiles = false,
+					hide_gitignored = true,
+					never_show = { ".DS_Store", "thumbs.db" },
+				},
+				hijack_netrw_behavior = "open_current",
+				window = {
+					position = "left",
+					width = 32,
+					mappings = {
+						["<cr>"] = "open_with_window_picker",
+						["l"] = "focus_preview",
+						["h"] = "close_node",
+						["H"] = "toggle_hidden",
+						["P"] = "toggle_preview",
+						["a"] = { "add", config = { show_path = "relative" } },
+						["A"] = "add_directory",
+						["d"] = "delete",
+						["r"] = "rename",
+						["y"] = "copy_to_clipboard",
+						["x"] = "cut_to_clipboard",
+						["p"] = "paste_from_clipboard",
+						["c"] = "copy",
+						["m"] = "move",
+						["R"] = "refresh",
+						["q"] = "close_window",
+						["?"] = "show_help",
+					},
+				},
+			},
+
+			buffers = {
+				follow_current_file = { enabled = true },
+				group_empty_dirs = true,
+				show_unloaded = true,
+				window = {
+					mappings = {
+						["bd"] = "buffer_delete",
+						["<cr>"] = "open_with_window_picker",
+					},
+				},
+			},
+
+			git_status = {
+				window = { position = "float" },
+			},
+
+			event_handlers = {
+				{
+					event = "neo_tree_buffer_enter",
+					handler = function(_)
+						vim.cmd "setlocal relativenumber"
+					end,
+				},
+			},
+		},
+
+		config = function(_, opts)
+			pcall(function()
+				require("catppuccin").setup { integrations = { neotree = true } }
+			end)
+
+			require("neo-tree").setup(opts)
+		end,
 	},
-	config = function()
-		require("oil").setup {
-			default_file_explorer = true,
-			view_options = {
-				show_hidden = true, -- Show hidden files
-			},
-			float = {
-				padding = 2,
-				max_width = 0,
-				max_height = 0,
-				border = "rounded",
-				win_options = { winblend = 0 },
-			},
-			keymaps = {
-				["<CR>"] = "actions.select",
-				["q"] = { "actions.close", mode = "n" },
-				["<esc>"] = { "actions.close", mode = "n" },
-				["-"] = { "actions.parent", mode = "n" },
-				["g."] = { "actions.toggle_hidden", mode = "n" },
-			},
-			use_default_keymaps = false, -- Disable default keymaps to avoid conflicts
-		}
-	end,
 }
