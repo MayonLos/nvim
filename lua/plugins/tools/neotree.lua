@@ -5,6 +5,10 @@ return {
 		cmd = { "Neotree" },
 		keys = {
 			{ "<leader>ee", "<cmd>Neotree toggle<cr>", desc = "Neo-tree: Toggle" },
+			{ "<leader>ef", "<cmd>Neotree focus<cr>", desc = "Neo-tree: Focus explorer" },
+			{ "<leader>eg", "<cmd>Neotree git_status<cr>", desc = "Neo-tree: Git status" },
+			{ "<leader>eb", "<cmd>Neotree buffers<cr>", desc = "Neo-tree: Buffers" },
+			{ "<leader>es", "<cmd>Neotree document_symbols<cr>", desc = "Neo-tree: Document symbols" },
 		},
 		dependencies = {
 			"nvim-lua/plenary.nvim",
@@ -25,14 +29,13 @@ return {
 			},
 		},
 
-		-- 关闭 netrw，防止与 neo-tree 冲突（如果你用 Oil 也建议关）
 		init = function()
 			vim.g.loaded_netrw = 1
 			vim.g.loaded_netrwPlugin = 1
 		end,
 
 		opts = {
-			close_if_last_window = true, -- 侧边栏是最后窗口时自动关闭
+			close_if_last_window = true,
 			popup_border_style = "rounded",
 			enable_git_status = true,
 			enable_diagnostics = true,

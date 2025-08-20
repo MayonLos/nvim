@@ -25,7 +25,7 @@ return {
 				hide_during_completion = true,
 				debounce = 75,
 				keymap = {
-					accept = "<M-l>",
+					accept = "<Tab>",
 					accept_word = false,
 					accept_line = false,
 					next = "<M-]>",
@@ -43,12 +43,8 @@ return {
 				svn = false,
 				cvs = false,
 				["."] = false,
-				-- You can customize specific filetypes here
-				-- javascript = true,
-				-- python = true,
-				-- lua = true,
 			},
-			copilot_node_command = "node", -- Node.js version must be > 20
+			copilot_node_command = "node",
 			server_opts_overrides = {},
 		}
 	end,

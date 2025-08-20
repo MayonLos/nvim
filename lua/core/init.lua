@@ -1,9 +1,10 @@
-for _, module_name in ipairs({
+for _, module_name in ipairs {
 	"core.options",
 	"core.autocmds",
 	"core.command",
 	"core.keymaps",
-}) do
+	"core.lspconfig",
+} do
 	local ok, mod_or_err = pcall(require, module_name)
 
 	if not ok then
