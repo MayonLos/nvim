@@ -29,12 +29,6 @@ return {
 			"shfmt",
 			"jq",
 			"sqlfluff",
-
-			-- Linters
-			"ruff",
-			"luacheck",
-			"markdownlint",
-			"cpplint",
 		}
 
 		local mr = require "mason-registry"

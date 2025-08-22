@@ -8,8 +8,6 @@ return {
 		{ "<leader>fb", "<cmd>FzfLua buffers<cr>", desc = "Buffers" },
 		{ "<leader>fr", "<cmd>FzfLua oldfiles<cr>", desc = "Recent Files" },
 		{ "<leader>fh", "<cmd>FzfLua helptags<cr>", desc = "Help" },
-		{ "gd", "<cmd>FzfLua lsp_definitions<cr>", desc = "LSP Definitions" },
-		{ "gr", "<cmd>FzfLua lsp_references<cr>", desc = "LSP References" },
 		{ "<leader>gs", "<cmd>FzfLua git_status<cr>", desc = "Git Status" },
 		{ "<leader>gc", "<cmd>FzfLua git_commits<cr>", desc = "Git Commits" },
 		{ "<leader>f.", "<cmd>FzfLua blines<cr>", desc = "Buffer Lines" },
