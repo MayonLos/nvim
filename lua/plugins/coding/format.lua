@@ -16,9 +16,9 @@ return {
 			mode = { "n", "v" },
 			desc = "Format injected languages",
 		},
-		{ "<leader>pt", "<cmd>FormatToggle<cr>", desc = "Toggle global autoformat" },
-		{ "<leader>pb", "<cmd>FormatBufferToggle<cr>", desc = "Toggle buffer autoformat" },
-		{ "<leader>ps", "<cmd>FormatStatus<cr>", desc = "Show format status" },
+		{ "<leader>lft", "<cmd>FormatToggle<cr>", desc = "Toggle global autoformat" },
+		{ "<leader>lfb", "<cmd>FormatBufferToggle<cr>", desc = "Toggle buffer autoformat" },
+		{ "<leader>lfs", "<cmd>FormatStatus<cr>", desc = "Show format status" },
 	},
 	dependencies = { "mason-org/mason.nvim" },
 
