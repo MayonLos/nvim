@@ -1,8 +1,9 @@
 return {
 	"MeanderingProgrammer/render-markdown.nvim",
 	ft = { "markdown", "llm", "codecompanion" },
-	opts = {},
-	config = function(_, opts)
-		require("render-markdown").setup(opts)
+	config = function()
+		require("render-markdown").setup {
+			completions = { blink = { enabled = true } },
+		}
 	end,
 }

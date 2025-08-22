@@ -39,10 +39,8 @@ return {
 			popup_border_style = "rounded",
 			enable_git_status = true,
 			enable_diagnostics = true,
-			use_libuv_file_watcher = true,
 
 			sources = { "filesystem", "buffers", "git_status", "document_symbols" },
-
 			source_selector = {
 				winbar = true,
 				content_layout = "center",
@@ -132,7 +130,7 @@ return {
 				{
 					event = "neo_tree_buffer_enter",
 					handler = function(_)
-						vim.cmd "setlocal relativenumber"
+						vim.opt_local.relativenumber = true
 					end,
 				},
 			},
@@ -142,7 +140,6 @@ return {
 			pcall(function()
 				require("catppuccin").setup { integrations = { neotree = true } }
 			end)
-
 			require("neo-tree").setup(opts)
 		end,
 	},

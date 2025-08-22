@@ -2,11 +2,6 @@ return {
 	"folke/which-key.nvim",
 	event = "VeryLazy",
 	opts = {
-		preset = "modern",
-		delay = 300,
-		expand = 1,
-		notify = false,
-
 		spec = {
 			-- Normal and visual mode groups
 			{ mode = { "n", "v" }, "<leader>f", group = "Find/File" },
@@ -24,26 +19,6 @@ return {
 			{ "]", group = "Next" },
 			{ "[", group = "Previous" },
 			{ "<C-w>", group = "Window" },
-		},
-
-		win = {
-			border = "rounded",
-			padding = { 1, 2 },
-		},
-
-		layout = {
-			height = { min = 4, max = 25 },
-			width = { min = 25, max = 60 },
-			spacing = 2,
-			align = "center",
-		},
-
-		sort = { "local", "order", "group", "alphanum", "mod" },
-
-		replace = {
-			["<leader>"] = "SPC",
-			["<cr>"] = "RET",
-			["<tab>"] = "TAB",
 		},
 
 		icons = {

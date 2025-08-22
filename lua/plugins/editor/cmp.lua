@@ -5,90 +5,78 @@ return {
 	dependencies = {
 		"rafamadriz/friendly-snippets",
 	},
+
 	opts_extend = { "sources.default" },
 
 	opts = function()
-		local keymaps = {
-			insert = {
+		local disabled_filetypes = { "oil", "NvimTree", "DressingInput", "copilot-chat" }
+
+		return {
+			enabled = function()
+				return not vim.tbl_contains(disabled_filetypes, vim.bo.filetype)
+			end,
+
+			keymap = {
+				preset = "enter",
 				["<C-space>"] = { "show", "show_documentation", "hide_documentation" },
-				["<C-e>"] = { "hide" },
-				["<CR>"] = { "accept", "fallback" },
+				["<C-e>"] = { "cancel", "fallback" },
 				["<Up>"] = { "select_prev", "fallback" },
 				["<Down>"] = { "select_next", "fallback" },
 				["<C-b>"] = { "scroll_documentation_up", "fallback" },
 				["<C-f>"] = { "scroll_documentation_down", "fallback" },
-				["<Tab>"] = { "select_next", "snippet_forward", "fallback" },
-				["<S-Tab>"] = { "select_prev", "snippet_backward", "fallback" },
+				["<Tab>"] = { "snippet_forward", "fallback" },
+				["<S-Tab>"] = { "snippet_backward", "fallback" },
 				["<C-k>"] = { "show_signature", "hide_signature", "fallback" },
 			},
-			cmdline = {
-				["<Tab>"] = { "show_and_insert", "select_next" },
-				["<S-Tab>"] = { "show_and_insert", "select_prev" },
-				["<CR>"] = { "accept_and_enter", "fallback" },
-			},
-		}
 
-		local sources = {
-			default = { "lsp", "path", "snippets" },
-			providers = {
-				lsp = {
-					module = "blink.cmp.sources.lsp",
-					fallbacks = { "buffer" },
-				},
-				buffer = {
-					module = "blink.cmp.sources.buffer",
-					min_keyword_length = 3,
-					max_items = 10,
-					score_offset = -1,
-				},
-				snippets = {
-					module = "blink.cmp.sources.snippets",
-					min_keyword_length = 2,
-					score_offset = -1,
-				},
-				markdown = {
-					name = "RenderMarkdown",
-					module = "render-markdown.integ.blink",
-					fallbacks = { "lsp" },
-				},
-			},
-			per_filetype = {
-				markdown = { inherit_defaults = true, "markdown" },
-			},
-		}
-
-		local disabled_filetypes = {
-			"oil",
-			"NvimTree",
-			"DressingInput",
-			"copilot-chat",
-		}
-
-		local function enabled()
-			return not vim.tbl_contains(disabled_filetypes, vim.bo.filetype)
-		end
-
-		return {
-			keymap = vim.tbl_extend("force", { preset = "none" }, keymaps.insert),
-			enabled = enabled,
 			appearance = { nerd_font_variant = "mono" },
-			signature = { enabled = true },
-			cmdline = {
-				completion = {
-					list = {
-						selection = { preselect = false, auto_insert = true },
-					},
-				},
-				keymap = keymaps.cmdline,
-			},
+
+			snippets = { preset = "default" },
+
 			completion = {
-				documentation = { auto_show = true },
 				keyword = { range = "prefix" },
 				list = { selection = { preselect = false, auto_insert = false } },
+				documentation = { auto_show = true, auto_show_delay_ms = 300 },
 				ghost_text = { enabled = true },
 			},
-			sources = sources,
+
+			signature = { enabled = true },
+
+			cmdline = {
+				keymap = {
+					preset = "inherit",
+					["<CR>"] = { "accept_and_enter", "fallback" },
+					["<Tab>"] = { "show_and_insert", "select_next" },
+					["<S-Tab>"] = { "show_and_insert", "select_prev" },
+				},
+				completion = { menu = { auto_show = false } },
+			},
+
 			fuzzy = { implementation = "prefer_rust_with_warning" },
+
+			sources = {
+				default = { "lsp", "path", "snippets" },
+				providers = {
+					lsp = {
+						module = "blink.cmp.sources.lsp",
+						fallbacks = { "buffer" },
+					},
+					buffer = {
+						module = "blink.cmp.sources.buffer",
+						min_keyword_length = 3,
+						max_items = 10,
+						score_offset = -1,
+					},
+					snippets = {
+						module = "blink.cmp.sources.snippets",
+						min_keyword_length = 2,
+						score_offset = -1,
+					},
+				},
+				per_filetype = {
+					markdown = { inherit_defaults = true },
+				},
+			},
 		}
 	end,
 }
