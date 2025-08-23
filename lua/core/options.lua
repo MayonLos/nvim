@@ -1,56 +1,64 @@
-local opt = vim.opt
-local fn = vim.fn
+local o, fn = vim.opt, vim.fn
 
--- UI
-opt.termguicolors = true
-opt.number = true
-opt.relativenumber = true
-opt.cursorline = true
-opt.scrolloff = 8
-opt.sidescrolloff = 8
-opt.signcolumn = "yes"
+-- ── UI ────────────────────────────────────────────────────────────────────────
+o.termguicolors = true
+o.number = true
+o.relativenumber = true
+o.cursorline = true
+o.signcolumn = "yes"
+o.scrolloff = 8
+o.sidescrolloff = 8
+o.showmode = false
+o.splitright = true
+o.splitbelow = true
+o.mouse = "a"
 
--- Indentation
-opt.expandtab = true
-opt.tabstop = 4
-opt.shiftwidth = 4
-opt.smartindent = true
+vim.o.winborder = "rounded"
 
--- Search
-opt.ignorecase = true
-opt.smartcase = true
-opt.incsearch = true
-opt.hlsearch = true
+-- ── Indent ───────────────────────────────────────────────────────────────────
+o.expandtab = true
+o.tabstop = 4
+o.shiftwidth = 4
+o.smartindent = true
 
--- File handling
-opt.confirm = true
-opt.clipboard = "unnamedplus"
-opt.undofile = true
-opt.undodir = fn.stdpath "data" .. "/undo"
+-- ── Search ───────────────────────────────────────────────────────────────────
+o.ignorecase = true
+o.smartcase = true
+o.incsearch = true
+o.hlsearch = true
 
--- Encoding
-opt.encoding = "utf-8"
-opt.fileencodings = { "utf-8", "gb18030", "gbk", "cp936", "big5", "shiftjis", "latin1" }
+-- ── Files / Undo ─────────────────────────────────────────────────────────────
+o.confirm = true
+o.clipboard = "unnamedplus"
+local undodir = (vim.fn.has "nvim-0.10" == 1 and fn.stdpath "state" or fn.stdpath "data") .. "/undo"
+if fn.isdirectory(undodir) == 0 then
+	fn.mkdir(undodir, "p")
+end
+o.undodir = undodir
+o.undofile = true
 
--- Folding (Tree-sitter)
-opt.foldmethod = "expr"
-opt.foldexpr = "nvim_treesitter#foldexpr()"
-opt.foldenable = true
-opt.foldlevel = 99
-opt.foldlevelstart = 99
-opt.foldminlines = 3
-opt.foldnestmax = 10
-opt.foldtext = ""
+-- ── Encoding ─────────────────────────────────────────────────────────────────
+o.fileencodings = { "ucs-bom", "utf-8", "gb18030", "gbk", "gb2312", "latin1" }
 
--- Fillchars
-opt.fillchars = { fold = "·", eob = " " }
+-- ── Folding（Tree-sitter）────────────────────────────────────────────────────
+o.foldmethod = "expr"
+o.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+o.foldenable = true
+o.foldlevel = 99
+o.foldlevelstart = 99
+o.foldminlines = 3
+o.foldnestmax = 10
+o.foldtext = ""
 
--- Performance & behavior
-opt.updatetime = 250
-opt.timeoutlen = 300
-opt.splitright = true
-opt.splitbelow = true
-opt.mouse = "a"
-opt.showmode = false
-opt.completeopt = { "menu", "menuone", "noselect" }
-opt.backspace = { "indent", "eol", "start" }
+-- ── Fillchars ────────────────────────────────────────────────────────────────
+o.fillchars = {
+	fold = "·",
+	eob = " ",
+}
+
+-- ── Performance / Behavior ───────────────────────────────────────────────────
+o.updatetime = 250
+o.timeoutlen = 300
+o.completeopt = { "menu", "menuone", "noselect" }
+o.shortmess:append { W = true, I = true, c = true, C = true, s = true }
+o.backspace = { "indent", "eol", "start" }
