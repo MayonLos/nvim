@@ -3,7 +3,11 @@ return {
 	event = { "BufReadPost", "BufNewFile" },
 	build = ":TSUpdate",
 	config = function()
-		require("nvim-treesitter.configs").setup({
+		local uv = vim.uv or vim.loop
+		local MAX = 100 * 1024
+		local blacklist = { rust = true }
+
+		require("nvim-treesitter.configs").setup {
 			ensure_installed = {
 				"vim",
 				"vimdoc",
@@ -15,22 +19,43 @@ return {
 				"markdown",
 				"markdown_inline",
 				"html",
+				"latex",
+				"bibtex",
+				"json",
+				"yaml",
+				"toml",
+				"regex",
+				"query",
 			},
+			sync_install = false,
 			auto_install = true,
+
 			highlight = {
 				enable = true,
+				additional_vim_regex_highlighting = false,
 				disable = function(lang, buf)
-					local black = { rust = true }
-					if black[lang] then
+					if blacklist[lang] then
 						return true
 					end
-					local max = 100 * 1024
-					local ok, s = pcall(vim.loop.fs_stat, vim.api.nvim_buf_get_name(buf))
-					return ok and s and s.size > max
+					local ok, stat = pcall(uv.fs_stat, vim.api.nvim_buf_get_name(buf))
+					return ok and stat and stat.size and stat.size > MAX
 				end,
 			},
-			incremental_selection = { enable = true },
-			indent = { enable = true },
-		})
+
+			incremental_selection = {
+				enable = true,
+				keymaps = {
+					init_selection = "gnn",
+					node_incremental = "grn",
+					scope_incremental = "grc",
+					node_decremental = "grm",
+				},
+			},
+
+			indent = {
+				enable = true,
+				disable = { "markdown" },
+			},
+		}
 	end,
 }
