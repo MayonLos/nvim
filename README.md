@@ -89,16 +89,6 @@ ln -s $(which fdfind) ~/.local/bin/fd
 
 ---
 
-### 🎨 字体设置（在 Windows 端完成）
-
-由于 WSL 不负责终端字体渲染，请在 **Windows Terminal / Alacritty** 中配置 Nerd Font：
-
-1. 下载字体：[JetBrainsMono Nerd Font][nerdfont]
-2. 右键字体文件 → 安装
-3. 打开终端设置 → 字体 → 设置为：
-
-```
-JetBrainsMono Nerd Font
 ```
 
 ---
