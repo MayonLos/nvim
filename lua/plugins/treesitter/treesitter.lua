@@ -19,7 +19,6 @@ return {
 				"markdown",
 				"markdown_inline",
 				"html",
-				"latex",
 				"bibtex",
 				"json",
 				"yaml",

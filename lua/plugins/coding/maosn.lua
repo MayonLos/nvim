@@ -17,7 +17,6 @@ return {
 			"clangd",
 			"pyright",
 			"marksman",
-			"texlab",
 
 			-- Formatters
 			"stylua",

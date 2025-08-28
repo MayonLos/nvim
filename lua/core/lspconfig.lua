@@ -115,16 +115,6 @@ local function make_on_attach()
 				callback = vim.lsp.buf.clear_references,
 			})
 		end
-
-		if client.name == "texlab" then
-			local function tex_map(lhs, cmd, desc)
-				vim.keymap.set("n", lhs, function()
-					client:exec_cmd({ command = cmd }, { bufnr = bufnr })
-				end, { buffer = bufnr, desc = "LaTeX: " .. desc })
-			end
-			tex_map("<leader>lb", "texlab.build", "Build")
-			tex_map("<leader>lv", "texlab.forwardSearch", "Forward Search")
-		end
 	end
 end
 
@@ -196,26 +186,6 @@ local function setup_servers()
 			cmd = { "marksman" },
 			filetypes = { "markdown" },
 			root_markers = { ".git" },
-		},
-
-		texlab = {
-			cmd = { "texlab" },
-			filetypes = { "tex", "bib" },
-			root_markers = { ".git" },
-			settings = {
-				texlab = {
-					build = {
-						executable = "latexmk",
-						args = { "-pdf", "-interaction=nonstopmode", "-synctex=1", "%f" },
-						onSave = false,
-					},
-					forwardSearch = {
-						executable = "zathura",
-						args = { "--synctex-forward", "%l:1:%f", "%p" },
-					},
-					chktex = { onOpenAndSave = true, onEdit = false },
-				},
-			},
 		},
 	}
 
