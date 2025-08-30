@@ -9,7 +9,7 @@ return {
 			require("catppuccin").setup {
 				flavour = "frappe",
 				background = { light = "latte", dark = "frappe" },
-				-- transparent_background = true, -- Enable full transparency
+				transparent_background = true, -- Enable full transparency
 				float = { transparent = true, solid = false }, -- Transparent floats
 				show_end_of_buffer = false,
 				term_colors = true,
