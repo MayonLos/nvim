@@ -7,6 +7,7 @@ local cache = require("core.command.runners.cache")
 local config = require("core.command.runners.config")
 local terminal = require("core.command.runners.terminal")
 local runners = require("core.command.runners.runners")
+local async = require("core.command.runners.async")
 
 -- Expose configuration for backwards compatibility
 M.config = config.config
@@ -106,7 +107,37 @@ function M.run_code()
 			"▶"
 		)
 		
-		-- Create terminal with session reuse
+		-- Check if this is a compilation task that could benefit from async
+		local needs_compilation = runner.name:match("C") or runner.name:match("Rust") or runner.name:match("Java")
+		
+		if needs_compilation and cfg.behavior.async_compilation then
+			-- Use async compilation for compilation tasks
+			return async.smart_compile(
+				file, 
+				cmd, 
+				runner.name, 
+				project_root, 
+				cfg,
+				function(success, exit_code, elapsed)
+					if success then
+						-- After successful compilation, run the executable
+						local run_cmd = cmd:match("&&%s*(.+)") or cmd -- Extract run command
+						if run_cmd and run_cmd ~= cmd then
+							local session = terminal.create_terminal(
+								string.format("cd %s && %s", utils.shell_escape(file.dir), run_cmd),
+								runner.name,
+								session_key
+							)
+							
+							if session then
+								M._sessions[session.job_id] = session
+							end
+						end
+					end
+				end
+			)
+		end
+		-- Create terminal with session reuse (for non-async or non-compilation tasks)
 		local session_key = file.ext .. "_" .. file.base
 		local session = terminal.create_terminal(full_cmd, runner.name, session_key)
 		
@@ -193,6 +224,7 @@ end
 
 ---Clean up all resources
 function M.cleanup()
+	async.cancel_all()
 	terminal.close_all_terminals()
 	utils.cleanup()
 	cache.cleanup_cache()
@@ -238,6 +270,36 @@ function M.setup(opts)
 		"RunCodeCleanup",
 		M.cleanup,
 		{ desc = "Clean up CodeRunner resources" }
+	)
+	vim.api.nvim_create_user_command(
+		"RunCodeAsync",
+		function()
+			-- Check async compilation status
+			local status = async.get_status()
+			if vim.tbl_isempty(status) then
+				utils.notify("No active async compilations", vim.log.levels.INFO, "ℹ")
+			else
+				for file_path, compilation in pairs(status) do
+					local file_name = vim.fn.fnamemodify(file_path, ":t")
+					utils.notify(
+						string.format("%s: %s (%s)", file_name, compilation.runner_name, compilation.elapsed),
+						vim.log.levels.INFO,
+						"🔄"
+					)
+				end
+			end
+		end,
+		{ desc = "Show async compilation status" }
+	)
+	vim.api.nvim_create_user_command(
+		"RunCodeStop",
+		function()
+			local cancelled = async.cancel_all()
+			if cancelled == 0 then
+				utils.notify("No active compilations to stop", vim.log.levels.INFO, "ℹ")
+			end
+		end,
+		{ desc = "Stop all async compilations" }
 	)
 	
 	-- Create keymap if specified

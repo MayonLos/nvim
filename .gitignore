@@ -13,3 +13,7 @@ secrets/
 # 忽略 .history 隐藏目录及其所有内容
 .history/
 selected_theme.txt
+
+# CodeRunner development files
+tests/
+example-project-config.lua
