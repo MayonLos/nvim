@@ -1,166 +1,81 @@
 return {
 	"stevearc/conform.nvim",
-	event = { "BufReadPre", "BufNewFile" },
-	cmd = { "ConformInfo", "Format", "FormatToggle", "FormatBufferToggle", "FormatStatus" },
+	event = { "BufWritePre" },
+	cmd = { "ConformInfo" },
 	keys = {
-		{ "<leader>pf", "<cmd>Format<cr>", desc = "Format buffer manually" },
 		{
-			"<leader>pi",
+			"<leader>f",
 			function()
-				require("conform").format {
-					formatters = { "injected" },
-					timeout_ms = 5000,
-					lsp_format = "fallback",
-				}
+				require("conform").format({ async = true, lsp_fallback = true })
 			end,
 			mode = { "n", "v" },
-			desc = "Format injected languages",
+			desc = "Format buffer",
 		},
-		{ "<leader>lft", "<cmd>FormatToggle<cr>", desc = "Toggle global autoformat" },
-		{ "<leader>lfb", "<cmd>FormatBufferToggle<cr>", desc = "Toggle buffer autoformat" },
-		{ "<leader>lfs", "<cmd>FormatStatus<cr>", desc = "Show format status" },
 	},
-	dependencies = { "mason-org/mason.nvim" },
+	opts = {
+		default_format_opts = {
+			timeout_ms = 3000,
+			async = false,
+			quiet = false,
+			lsp_fallback = true,
+		},
 
-	config = function()
-		local conform = require "conform"
-		vim.g.autoformat_enabled = true
+		formatters_by_ft = {
+			lua = { "stylua" },
+			python = { "black" },
+			c = { "clang_format" },
+			cpp = { "clang_format" },
+			javascript = { "prettierd", "prettier", stop_after_first = true },
+			typescript = { "prettierd", "prettier", stop_after_first = true },
+			json = { "prettierd", "prettier", stop_after_first = true },
+			yaml = { "prettierd", "prettier", stop_after_first = true },
+			markdown = { "prettierd", "prettier", stop_after_first = true },
+			sh = { "shfmt" },
+			["_"] = { "trim_whitespace" },
+		},
 
-		conform.setup {
-			default_format_opts = { timeout_ms = 5000, lsp_format = "fallback" },
-			formatters_by_ft = {
-				lua = { "stylua" },
-				python = { "isort", "black" },
-				c = { "clang_format" },
-				cpp = { "clang_format" },
-				markdown = { "prettierd", "prettier", stop_after_first = true },
-				sh = { "shfmt" },
-				["_"] = { "trim_whitespace" },
-			},
-			formatters = {
-				stylua = {
-					prepend_args = { "--indent-width", "4", "--column-width", "120", "--call-parentheses", "None" },
-				},
-				shfmt = { prepend_args = { "-i", "4", "-ci", "-bn" } },
-				clang_format = {
-					prepend_args = {
-						"--style={"
-							.. "BasedOnStyle: LLVM, IndentWidth: 4, TabWidth: 4, UseTab: Never, "
-							.. "ColumnLimit: 120, AlignConsecutiveAssignments: Consecutive, "
-							.. "AlignConsecutiveDeclarations: Consecutive, "
-							.. "AllowShortFunctionsOnASingleLine: Empty, "
-							.. "AllowShortIfStatementsOnASingleLine: Never, "
-							.. "AllowShortLoopsOnASingleLine: false, "
-							.. "BreakBeforeBraces: Attach, SpaceAfterCStyleCast: true"
-							.. "}",
-					},
-				},
-				prettier = {
-					prepend_args = {
-						"--tab-width",
-						"2",
-						"--print-width",
-						"100",
-						"--single-quote",
-						"true",
-						"--trailing-comma",
-						"es5",
-						"--semi",
-						"true",
-						"--bracket-spacing",
-						"true",
-						"--arrow-parens",
-						"avoid",
-					},
-				},
-				prettierd = {
-					prepend_args = {
-						"--tab-width",
-						"2",
-						"--print-width",
-						"100",
-						"--single-quote",
-						"true",
-						"--trailing-comma",
-						"es5",
-						"--semi",
-						"true",
-						"--bracket-spacing",
-						"true",
-						"--arrow-parens",
-						"avoid",
-					},
-				},
-				black = { prepend_args = { "--line-length", "100" } },
-				isort = { prepend_args = { "--profile", "black" } },
-				injected = {
-					options = {
-						ignore_errors = true,
-						lang_to_formatters = { json = { "jq" }, sql = { "sqlfluff" } },
-					},
+		format_on_save = function(bufnr)
+			local bufname = vim.api.nvim_buf_get_name(bufnr)
+			local skip_dirs = { "/node_modules/", "/.git/", "/build/", "/dist/" }
+
+			for _, dir in ipairs(skip_dirs) do
+				if bufname:match(dir) then
+					return nil
+				end
+			end
+
+			return {
+				timeout_ms = 3000,
+				lsp_fallback = true,
+			}
+		end,
+
+		formatters = {
+			stylua = {
+				prepend_args = {
+					"--indent-type=Tabs",
+					"--column-width=100",
 				},
 			},
+			black = {
+				prepend_args = {
+					"--line-length=88",
+					"--fast",
+				},
+			},
+			clang_format = {
+				prepend_args = {
+					"--style={BasedOnStyle: LLVM, IndentWidth: 4, TabWidth: 4, UseTab: Never, ColumnLimit: 100}",
+				},
+			},
+			shfmt = {
+				prepend_args = {
+					"-i=2",
+					"-ci",
+				},
+			},
+		},
 
-			format_on_save = function(bufnr)
-				local name = vim.api.nvim_buf_get_name(bufnr)
-				local skip =
-					{ "/node_modules/", "/vendor/", "/build/", "/dist/", "/target/", "/.git/", "%.min%.", "%.lock$" }
-				for _, pat in ipairs(skip) do
-					if name:match(pat) then
-						return
-					end
-				end
-				if not vim.g.autoformat_enabled then
-					return
-				end
-				if vim.b.autoformat_enabled == false then
-					return
-				end
-				return { timeout_ms = 5000, lsp_format = "fallback" }
-			end,
-
-			log_level = vim.log.levels.WARN,
-			notify_on_error = true,
-			notify_no_formatters = false,
-		}
-
-		vim.api.nvim_create_user_command("FormatToggle", function()
-			vim.g.autoformat_enabled = not vim.g.autoformat_enabled
-			vim.notify(
-				("Global autoformat %s"):format(vim.g.autoformat_enabled and "✅ enabled" or "❌ disabled"),
-				vim.log.levels.INFO,
-				{ title = "Conform" }
-			)
-		end, {})
-
-		vim.api.nvim_create_user_command("Format", function(args)
-			local o = { timeout_ms = 5000, lsp_format = "fallback" }
-			if args.range ~= 0 then
-				o.range = { args.line1, args.line2 }
-			end
-			conform.format(o)
-		end, { range = true })
-
-		vim.api.nvim_create_user_command("FormatBufferToggle", function()
-			if vim.b.autoformat_enabled == nil then
-				vim.b.autoformat_enabled = true
-			end
-			vim.b.autoformat_enabled = not vim.b.autoformat_enabled
-			vim.notify(
-				("Buffer autoformat %s"):format(vim.b.autoformat_enabled and "✅ enabled" or "❌ disabled"),
-				vim.log.levels.INFO,
-				{ title = "Conform" }
-			)
-		end, {})
-
-		vim.api.nvim_create_user_command("FormatStatus", function()
-			local g = vim.g.autoformat_enabled and "✅ enabled" or "❌ disabled"
-			local b = (vim.b.autoformat_enabled ~= false) and "✅ enabled" or "❌ disabled"
-			vim.notify(
-				("Autoformat Status:\n• Global: %s\n• Buffer: %s"):format(g, b),
-				vim.log.levels.INFO,
-				{ title = "Conform" }
-			)
-		end, {})
-	end,
+		notify_on_error = true,
+	},
 }

@@ -6,10 +6,10 @@ return {
 		ui = { border = "rounded" },
 	},
 	config = function(_, opts)
-		local mason = require "mason"
+		local mason = require("mason")
 		mason.setup(opts)
 
-		vim.env.PATH = vim.fn.stdpath "data" .. "/mason/bin:" .. vim.env.PATH
+		vim.env.PATH = vim.fn.stdpath("data") .. "/mason/bin:" .. vim.env.PATH
 
 		local ENSURE = {
 			-- LSP servers
@@ -20,17 +20,14 @@ return {
 
 			-- Formatters
 			"stylua",
-			"isort",
 			"black",
 			"clang-format",
 			"prettier",
 			"prettierd",
 			"shfmt",
-			"jq",
-			"sqlfluff",
 		}
 
-		local mr = require "mason-registry"
+		local mr = require("mason-registry")
 
 		local function ensure_installed()
 			for _, name in ipairs(ENSURE) do
@@ -52,7 +49,11 @@ return {
 			ensure_installed()
 		end
 
-		vim.api.nvim_create_user_command("MasonEnsure", ensure_installed, { desc = "Ensure install ENSURE list" })
+		vim.api.nvim_create_user_command(
+			"MasonEnsure",
+			ensure_installed,
+			{ desc = "Ensure install ENSURE list" }
+		)
 		vim.api.nvim_create_user_command("MasonMissing", function()
 			local missing = {}
 			for _, name in ipairs(ENSURE) do

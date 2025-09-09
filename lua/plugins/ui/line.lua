@@ -437,23 +437,6 @@ return {
 					end
 				end,
 			}
-			local Venv = {
-				condition = function()
-					if not package.loaded["venv-selector"] then
-						return false
-					end
-					local ok, vs = pcall(require, "venv-selector")
-					return ok and (vs.venv() ~= nil and vs.venv() ~= "")
-				end,
-				provider = function()
-					local v = require("venv-selector").venv()
-					local name = vim.fn.fnamemodify(v, ":t")
-					-- 你已有的工具函数：
-					return " 🐍 " .. M.truncate(name, M.adapt(18))
-				end,
-				hl = { fg = colors.green, bold = true },
-				update = { "BufEnter", "LspAttach", "LspDetach" },
-			}
 			local StatusLine = {
 				hl = function()
 					return conditions.is_active() and "StatusLine" or "StatusLineNC"
@@ -464,7 +447,6 @@ return {
 				Git,
 				Diagnostics,
 				Align,
-				Venv,
 				Space,
 				LSP,
 				Space,

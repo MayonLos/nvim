@@ -133,7 +133,7 @@ local function create_terminal(cmd, runner_name)
 		close_session(session)
 	end
 
-	for _, key in ipairs { "q", "<Esc>", "<C-c>" } do
+	for _, key in ipairs({ "q", "<Esc>", "<C-c>" }) do
 		vim.keymap.set({ "n", "t" }, key, close_term, {
 			buffer = buf,
 			silent = true,
@@ -152,14 +152,22 @@ local function create_terminal(cmd, runner_name)
 				M._sessions[session.job_id] = nil
 
 				if exit_code == 0 then
-					notify(string.format("%s completed in %ss", runner_name, elapsed), vim.log.levels.INFO, "✓")
+					notify(
+						string.format("%s completed in %ss", runner_name, elapsed),
+						vim.log.levels.INFO,
+						"✓"
+					)
 					if cfg.auto_close_on_success then
 						vim.defer_fn(function()
 							close_session(session)
 						end, 1500)
 					end
 				else
-					notify(string.format("%s failed (exit: %d)", runner_name, exit_code), vim.log.levels.ERROR, "✗")
+					notify(
+						string.format("%s failed (exit: %d)", runner_name, exit_code),
+						vim.log.levels.ERROR,
+						"✗"
+					)
 				end
 			end)
 		end,
@@ -193,7 +201,8 @@ M.runners = {
 		name = "C",
 		cmd = function(file)
 			local flags = get_compile_flags()
-			local compile_cmd = string.format("gcc %s %s -o %s", table.concat(flags, " "), file.name, file.base)
+			local compile_cmd =
+				string.format("gcc %s %s -o %s", table.concat(flags, " "), file.name, file.base)
 			return string.format("%s && ./%s", compile_cmd, file.base)
 		end,
 	},
@@ -202,8 +211,12 @@ M.runners = {
 		name = "C++",
 		cmd = function(file)
 			local flags = get_compile_flags()
-			local compile_cmd =
-				string.format("g++ -std=c++20 %s %s -o %s", table.concat(flags, " "), file.name, file.base)
+			local compile_cmd = string.format(
+				"g++ -std=c++20 %s %s -o %s",
+				table.concat(flags, " "),
+				file.name,
+				file.base
+			)
 			return string.format("%s && ./%s", compile_cmd, file.base)
 		end,
 	},
@@ -313,7 +326,11 @@ end
 function M.toggle_mode()
 	M.config.compilation.mode = M.config.compilation.mode == "debug" and "release" or "debug"
 	local icon = M.config.compilation.mode == "debug" and "🐛" or "🚀"
-	notify(string.format("Mode: %s %s", icon, M.config.compilation.mode), vim.log.levels.INFO, "⚙")
+	notify(
+		string.format("Mode: %s %s", icon, M.config.compilation.mode),
+		vim.log.levels.INFO,
+		"⚙"
+	)
 end
 
 function M.show_supported_languages()
@@ -343,7 +360,11 @@ function M.setup(opts)
 
 	-- Commands
 	vim.api.nvim_create_user_command("RunCode", M.run_code, { desc = "Run current file" })
-	vim.api.nvim_create_user_command("RunCodeToggle", M.toggle_mode, { desc = "Toggle debug/release mode" })
+	vim.api.nvim_create_user_command(
+		"RunCodeToggle",
+		M.toggle_mode,
+		{ desc = "Toggle debug/release mode" }
+	)
 	vim.api.nvim_create_user_command(
 		"RunCodeLanguages",
 		M.show_supported_languages,

@@ -10,40 +10,36 @@ return {
 			changedelete = { text = "▒" },
 			untracked = { text = "┆" },
 		},
-
 		numhl = true,
-		preview_config = { border = "rounded" },
-
+		max_file_length = 40000,
+		preview_config = {
+			border = "rounded",
+			style = "minimal",
+			relative = "cursor",
+		},
 		on_attach = function(bufnr)
-			local gs = require "gitsigns"
+			local gs = require("gitsigns")
 			local function map(mode, lhs, rhs, desc)
-				vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, desc = desc })
+				vim.keymap.set(mode, lhs, rhs, {
+					buffer = bufnr,
+					desc = desc,
+					silent = true,
+				})
 			end
-
 			map("n", "]c", function()
 				if vim.wo.diff then
-					vim.cmd.normal { "]c", bang = true }
+					vim.cmd.normal({ "]c", bang = true })
 				else
-					gs.nav_hunk "next"
+					gs.nav_hunk("next")
 				end
-			end, "Next hunk")
+			end, "Next git hunk")
 			map("n", "[c", function()
 				if vim.wo.diff then
-					vim.cmd.normal { "[c", bang = true }
+					vim.cmd.normal({ "[c", bang = true })
 				else
-					gs.nav_hunk "prev"
+					gs.nav_hunk("prev")
 				end
-			end, "Prev hunk")
-
-			map("n", "<leader>hs", gs.stage_hunk, "Stage hunk")
-			map("n", "<leader>hr", gs.reset_hunk, "Reset hunk")
-			map("n", "<leader>hS", gs.stage_buffer, "Stage buffer")
-			map("n", "<leader>hR", gs.reset_buffer, "Reset buffer")
-			map("n", "<leader>hp", gs.preview_hunk, "Preview hunk")
-
-			map("n", "<leader>hb", function()
-				gs.blame_line { full = true }
-			end, "Blame line (full)")
+			end, "Previous git hunk")
 		end,
 	},
 }
