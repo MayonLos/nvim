@@ -4,7 +4,7 @@ return {
 		cmd = "Copilot",
 		event = "InsertEnter",
 		config = function()
-			require("copilot").setup {
+			require("copilot").setup({
 				panel = {
 					enabled = true,
 					auto_refresh = false,
@@ -27,7 +27,7 @@ return {
 				},
 				copilot_node_command = "node",
 				server_opts_overrides = {},
-			}
+			})
 		end,
 	},
 	{
@@ -134,9 +134,11 @@ return {
 
 			cmdline = {
 				keymap = {
-					["<Tab>"] = { "select_next", "fallback" },
+					["<Tab>"] = { "show", "select_next", "fallback" },
 					["<S-Tab>"] = { "select_prev", "fallback" },
 					["<CR>"] = { "accept_and_enter", "fallback" },
+					["<Up>"] = { "select_prev", "fallback" },
+					["<Down>"] = { "select_next", "fallback" },
 				},
 				completion = {
 					menu = { auto_show = true },

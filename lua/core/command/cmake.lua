@@ -1,94 +1,81 @@
+---@class CMakeManager
 local M = {}
 
--- Default configuration
+-- ========================
+-- Config (Linux-only)
+-- ========================
 M.config = {
 	build_dir = "build",
-	build_type = "Debug",
+	build_type = "Debug", -- Debug / Release / RelWithDebInfo / MinSizeRel
 	cxx_standard = 17,
-	-- jobs = nil, -- parallel build jobs (auto-detect if nil)
+	generator = "auto", -- "auto" | "Ninja" | "Unix Makefiles"
+	use_ccache = true, -- Automatically enable if ccache is available
+	extra_cmake_args = {}, -- Extra -D flags, e.g., { "-DCMAKE_TOOLCHAIN_FILE=..." }
+	jobs = nil, -- nil: auto-detect with nproc
+	cmake_program = "cmake", -- Can be changed to "cmake3"
+	shell = "bash", -- Use bash -lc to avoid zsh compatibility issues
+	env = {}, -- Temporary environment variables: { CC="clang", CXX="clang++" }
 }
 
--- Utility: check if file or directory exists
+-- ========================
+-- Utilities
+-- ========================
 local function file_exists(path)
 	return vim.fn.filereadable(path) == 1
 end
+
 local function dir_exists(path)
 	return vim.fn.isdirectory(path) == 1
 end
 
--- Utility: derive project name from current directory
+local function shesc(s)
+	return vim.fn.shellescape(s or "")
+end
+
+local function have_exe(bin)
+	return vim.fn.executable(bin) == 1
+end
+
 local function get_project_name()
 	local name = vim.fn.fnamemodify(vim.fn.getcwd(), ":t")
-	name = name:gsub("[^%w_%-]", "_") -- sanitize to valid name
-	if name == "" then
-		name = "Project"
-	end
-	return name
+	name = name:gsub("[^%w_%-]", "_")
+	return name ~= "" and name or "Project"
 end
 
--- Generate a simple CMakeLists.txt (if not already present)
-function M.generate_cmake()
-	if file_exists "CMakeLists.txt" then
-		vim.notify("CMakeLists.txt already exists", vim.log.levels.WARN)
-		return
+local function detect_generator()
+	if M.config.generator ~= "auto" then
+		return M.config.generator
 	end
-	local project = get_project_name()
-	-- Collect source files from current dir and src/ (recursive)
-	local sources = {}
-	local patterns = { "**/*.c", "**/*.cpp", "**/*.cxx" }
-	for _, dir in ipairs { ".", "src" } do
-		if dir == "." or dir_exists(dir) then
-			for _, pat in ipairs(patterns) do
-				for _, file in ipairs(vim.fn.globpath(dir, pat, false, true)) do
-					-- Skip files in 'build', 'test', or 'example' directories
-					if not file:find "/build/" and not file:find "/test" and not file:find "/example" then
-						table.insert(sources, vim.fn.fnamemodify(file, ":.")) -- relative path
-					end
-				end
-			end
-		end
-	end
-	table.sort(sources)
-	if #sources == 0 then
-		vim.notify("No source files found for CMakeLists.txt", vim.log.levels.WARN)
-	end
-
-	-- Construct CMakeLists.txt content
-	local lines = {
-		"cmake_minimum_required(VERSION 3.10)",
-		"project(" .. project .. ")",
-		"set(CMAKE_CXX_STANDARD " .. M.config.cxx_standard .. ")",
-		"set(CMAKE_CXX_STANDARD_REQUIRED ON)",
-		"set(CMAKE_EXPORT_COMPILE_COMMANDS ON)",
-	}
-	if dir_exists "include" then
-		table.insert(lines, "include_directories(include)")
-	end
-	if #sources > 0 then
-		table.insert(lines, "add_executable(${PROJECT_NAME}")
-		for _, src in ipairs(sources) do
-			table.insert(lines, "    " .. src)
-		end
-		table.insert(lines, ")")
-	else
-		table.insert(lines, "# add_executable(${PROJECT_NAME} main.cpp)")
-	end
-
-	-- Write out the file
-	local ok, err = pcall(vim.fn.writefile, lines, "CMakeLists.txt")
-	if ok then
-		vim.notify("Generated CMakeLists.txt for project " .. project, vim.log.levels.INFO)
-	else
-		vim.notify("Error writing CMakeLists.txt: " .. err, vim.log.levels.ERROR)
-	end
+	return have_exe("ninja") and "Ninja" or "Unix Makefiles"
 end
 
--- Internal helper: open a floating terminal to run a given shell command
-local function open_terminal(cmd, title)
-	local buf = vim.api.nvim_create_buf(false, true) -- scratch buffer for terminal
-	vim.api.nvim_buf_set_option(buf, "bufhidden", "wipe")
-	local width = math.floor(vim.o.columns * 0.8)
-	local height = math.floor(vim.o.lines * 0.8)
+local function detect_jobs()
+	if M.config.jobs then
+		return M.config.jobs
+	end
+	local handle = io.popen("nproc 2>/dev/null || echo 4")
+	local out = handle:read("*a") or "4"
+	handle:close()
+	local j = tonumber(out) or 4
+	M.config.jobs = j
+	return j
+end
+
+local function open_terminal(cmd_string, title, opts)
+	-- Inject env into command prefix instead of termopen opts.env (for older nvim compatibility)
+	local env_exports = {}
+	local env_tbl = (opts and opts.env) or M.config.env
+	for k, v in pairs(env_tbl) do
+		table.insert(env_exports, ("export %s=%s"):format(k, shesc(tostring(v))))
+	end
+	local prefix = #env_exports > 0 and (table.concat(env_exports, "; ") .. "; ") or ""
+	local full_cmd = prefix .. cmd_string
+
+	local buf = vim.api.nvim_create_buf(false, true)
+	vim.bo[buf].bufhidden = "wipe"
+
+	local width = math.floor(vim.o.columns * 0.85)
+	local height = math.floor(vim.o.lines * 0.85)
 	vim.api.nvim_open_win(buf, true, {
 		relative = "editor",
 		style = "minimal",
@@ -100,122 +87,315 @@ local function open_terminal(cmd, title)
 		title = title or "Terminal",
 		title_pos = "center",
 	})
-	vim.fn.termopen(cmd)
-	vim.cmd "startinsert" -- enter Terminal mode to show live output
-	-- Close mappings: press Esc or 'q' to close the floating window
+
+	local shell = M.config.shell or os.getenv("SHELL") or "bash"
+	local args = { shell, "-lc", full_cmd }
+	-- Pass only cwd, not env, to avoid E475
+	vim.fn.termopen(args, {
+		cwd = (opts and opts.cwd) or vim.fn.getcwd(),
+	})
+
 	vim.keymap.set("t", "<Esc>", [[<C-\><C-n>:close<CR>]], { buffer = buf, silent = true })
 	vim.keymap.set("n", "q", ":close<CR>", { buffer = buf, silent = true })
+	vim.cmd("startinsert")
 end
 
--- Build (configure + compile) the project
+local function collect_sources()
+	local sources = {}
+	local patterns = { "**/*.c", "**/*.cc", "**/*.cpp", "**/*.cxx" }
+	local exclude_patterns = {
+		"/." .. M.config.build_dir .. "/",
+		"/build/",
+		"/cmake%-build",
+		"/test/",
+		"/tests/",
+		"/example/",
+		"/examples/",
+		"/third_party/",
+		"/third%-party/",
+		"/.git/",
+	}
+
+	for _, root in ipairs({ ".", "src" }) do
+		if root == "." or dir_exists(root) then
+			for _, pat in ipairs(patterns) do
+				local files = vim.fn.globpath(root, pat, false, true)
+				for _, file in ipairs(files) do
+					local skip = false
+					for _, ex in ipairs(exclude_patterns) do
+						if file:find(ex) then
+							skip = true
+							break
+						end
+					end
+					if not skip then
+						table.insert(sources, vim.fn.fnamemodify(file, ":."))
+					end
+				end
+			end
+		end
+	end
+
+	table.sort(sources)
+	return sources
+end
+
+local function link_compile_commands(build_dir)
+	local src = build_dir .. "/compile_commands.json"
+	if file_exists(src) then
+		os.execute(
+			("ln -sfn %s %s 2>/dev/null || true"):format(shesc(src), shesc("compile_commands.json"))
+		)
+	end
+end
+
+-- ========================
+-- Generate CMakeLists
+-- ========================
+function M.generate_cmake()
+	if file_exists("CMakeLists.txt") then
+		vim.notify("CMakeLists.txt already exists", vim.log.levels.WARN)
+		return
+	end
+
+	local project = get_project_name()
+	local sources = collect_sources()
+	if #sources == 0 then
+		vim.notify("No source files found; wrote a template CMakeLists.txt", vim.log.levels.WARN)
+	end
+
+	local lines = {
+		"cmake_minimum_required(VERSION 3.10)",
+		"project(" .. project .. " LANGUAGES C CXX)",
+		"set(CMAKE_CXX_STANDARD " .. tostring(M.config.cxx_standard) .. ")",
+		"set(CMAKE_CXX_STANDARD_REQUIRED ON)",
+		"set(CMAKE_EXPORT_COMPILE_COMMANDS ON)",
+		"",
+		'if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")',
+		"  add_compile_options(-Wall -Wextra -Wpedantic)",
+		'  if(CMAKE_BUILD_TYPE STREQUAL "Debug")',
+		"    add_compile_options(-O0 -g -fno-omit-frame-pointer)",
+		"  else()",
+		"    add_compile_options(-O3)",
+		"  endif()",
+		"endif()",
+		"",
+	}
+
+	if dir_exists("include") then
+		table.insert(lines, "include_directories(include)")
+	end
+
+	if #sources > 0 then
+		table.insert(lines, "add_executable(${PROJECT_NAME}")
+		for _, s in ipairs(sources) do
+			table.insert(lines, "  " .. s)
+		end
+		table.insert(lines, ")")
+	else
+		table.insert(lines, "# add_executable(${PROJECT_NAME} src/main.cpp)")
+	end
+
+	local ok, err = pcall(vim.fn.writefile, lines, "CMakeLists.txt")
+	if ok then
+		vim.notify("Generated CMakeLists.txt for project " .. project, vim.log.levels.INFO)
+	else
+		vim.notify(
+			"Error writing CMakeLists.txt: " .. (err or "unknown error"),
+			vim.log.levels.ERROR
+		)
+	end
+end
+
+-- ========================
+-- Build
+-- ========================
 function M.build_project()
 	local build_dir = M.config.build_dir
 	local build_type = M.config.build_type
 	if not dir_exists(build_dir) then
 		vim.fn.mkdir(build_dir, "p")
-	end -- create build dir if needed
-
-	-- Determine parallel jobs (auto-detect CPU count once if not set)
-	local jobs = M.config.jobs
-	if jobs == nil then
-		local handle = io.popen "nproc 2>/dev/null || echo 4"
-		jobs = handle and tonumber(handle:read "*a") or 4
-		if handle then
-			handle:close()
-		end
-		M.config.jobs = jobs
 	end
 
-	-- Prepare the shell command: CMake configure and then build
-	local cmd = string.format(
-		"cmake -B %s -S . -DCMAKE_BUILD_TYPE=%s && cmake --build %s --parallel %d",
-		vim.fn.shellescape(build_dir),
-		build_type,
-		vim.fn.shellescape(build_dir),
-		jobs
+	local gen = detect_generator()
+	local jobs = detect_jobs()
+
+	local args = {
+		shesc(M.config.cmake_program),
+		"-S .",
+		"-B " .. shesc(build_dir),
+		"-G " .. shesc(gen),
+		"-DCMAKE_BUILD_TYPE=" .. build_type,
+		"-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+	}
+
+	if M.config.use_ccache and have_exe("ccache") then
+		table.insert(args, "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache")
+	end
+
+	for _, a in ipairs(M.config.extra_cmake_args or {}) do
+		table.insert(args, a)
+	end
+
+	local configure = table.concat(args, " ")
+	local build = ("%s --build %s --parallel %s"):format(
+		shesc(M.config.cmake_program),
+		shesc(build_dir),
+		tostring(jobs)
 	)
-	open_terminal(cmd, "Build")
+	local post = ("ln -sfn %s %s || true"):format(
+		shesc(build_dir .. "/compile_commands.json"),
+		shesc("compile_commands.json")
+	)
+
+	local cmd = ("set -e && %s && %s && %s"):format(configure, build, post)
+	open_terminal(cmd, "CMake Build")
 end
 
--- Run the compiled executable (with optional arguments)
+-- ========================
+-- Run
+-- ========================
 function M.run_project(args)
-	local project = get_project_name()
-	local build_dir = M.config.build_dir
-	-- Determine the expected executable path
-	local exe_path = build_dir .. "/" .. project
-	if vim.fn.has "win32" == 1 or vim.fn.has "win64" == 1 then
-		exe_path = exe_path .. ".exe"
+	local exe = M.config.build_dir .. "/" .. get_project_name()
+	if not file_exists(exe) then
+		vim.notify(
+			"Executable not found. Build first (CMakeBuild/CMakeQuick).",
+			vim.log.levels.ERROR
+		)
+		return
 	end
-	if not file_exists(exe_path) then
-		-- If not found, try the Debug subdirectory (for multi-config generators)
-		local alt = build_dir
-			.. "/Debug/"
-			.. project
-			.. (vim.fn.has "win32" == 1 or vim.fn.has "win64" == 1 and ".exe" or "")
-		if file_exists(alt) then
-			exe_path = alt
-		else
-			return vim.notify("Executable not found. Please build the project first.", vim.log.levels.ERROR)
-		end
-	end
-	if args and args ~= "" then
-		exe_path = exe_path .. " " .. args
-	end
-	open_terminal(exe_path, "Run")
+
+	local cmd = shesc("./" .. exe) .. (args and args ~= "" and " " .. args or "")
+	open_terminal(cmd, "Run")
 end
 
--- Quick workflow: generate CMakeLists if needed, then build and run
+-- ========================
+-- Quick: Gen(if needed) + Build + Run
+-- ========================
 function M.quick_run(args)
-	if not file_exists "CMakeLists.txt" then
+	if not file_exists("CMakeLists.txt") then
 		M.generate_cmake()
 	end
-	local project = get_project_name()
+
 	local build_dir = M.config.build_dir
-	local build_type = M.config.build_type
-	local jobs = M.config.jobs or 4 -- use detected jobs or default to 4
-	local exe = build_dir .. "/" .. project .. (vim.fn.has "win32" == 1 or vim.fn.has "win64" == 1 and ".exe" or "")
-	-- Chain: CMake configure, build, and run the executable
-	local cmd = string.format(
-		"cmake -B %s -S . -DCMAKE_BUILD_TYPE=%s && cmake --build %s --parallel %d && %s",
-		vim.fn.shellescape(build_dir),
-		build_type,
-		vim.fn.shellescape(build_dir),
-		jobs,
-		exe .. (args and " " .. args or "")
+	if not dir_exists(build_dir) then
+		vim.fn.mkdir(build_dir, "p")
+	end
+
+	local gen = detect_generator()
+	local jobs = detect_jobs()
+
+	local base_cfg = {
+		shesc(M.config.cmake_program),
+		"-S .",
+		"-B " .. shesc(build_dir),
+		"-G " .. shesc(gen),
+		"-DCMAKE_BUILD_TYPE=" .. M.config.build_type,
+		"-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+	}
+
+	if M.config.use_ccache and have_exe("ccache") then
+		table.insert(base_cfg, "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache")
+	end
+
+	for _, a in ipairs(M.config.extra_cmake_args or {}) do
+		table.insert(base_cfg, a)
+	end
+
+	local configure = table.concat(base_cfg, " ")
+	local build = ("%s --build %s --parallel %s"):format(
+		shesc(M.config.cmake_program),
+		shesc(build_dir),
+		tostring(jobs)
 	)
+	local run = shesc("./" .. build_dir .. "/" .. get_project_name())
+		.. (args and args ~= "" and " " .. args or "")
+	local post = ("ln -sfn %s %s || true"):format(
+		shesc(build_dir .. "/compile_commands.json"),
+		shesc("compile_commands.json")
+	)
+
+	local cmd = ("set -e && %s && %s && %s && %s"):format(configure, build, post, run)
 	open_terminal(cmd, "Build & Run")
 end
 
--- Clean the build directory
+-- ========================
+-- Clean
+-- ========================
 function M.clean_project()
-	if dir_exists(M.config.build_dir) then
-		vim.fn.delete(M.config.build_dir, "rf")
+	local dir = M.config.build_dir
+	if dir_exists(dir) then
+		vim.fn.delete(dir, "rf")
 		vim.notify("Build directory removed.", vim.log.levels.INFO)
+	else
+		vim.notify("Nothing to clean.", vim.log.levels.INFO)
 	end
 end
 
--- Setup user commands for easy access to the functions
+-- ========================
+-- Build Type helpers
+-- ========================
+local VALID_TYPES = { Debug = true, Release = true, RelWithDebInfo = true, MinSizeRel = true }
+
+function M.set_build_type(bt)
+	if not VALID_TYPES[bt] then
+		vim.notify("Invalid build type: " .. tostring(bt), vim.log.levels.ERROR)
+		return
+	end
+	M.config.build_type = bt
+	vim.notify("Build type set to " .. bt, vim.log.levels.INFO)
+end
+
+local function toggle_build_type()
+	local now = M.config.build_type
+	local next_ = (now == "Debug") and "Release" or "Debug"
+	M.set_build_type(next_)
+end
+
+-- ========================
+-- Setup Commands
+-- ========================
 function M.setup(user_config)
 	if user_config then
 		for k, v in pairs(user_config) do
 			M.config[k] = v
-		end -- apply user overrides
+		end
 	end
-	vim.api.nvim_create_user_command("CMakeGen", function()
-		M.generate_cmake()
-	end, { desc = "Generate CMakeLists.txt" })
-	vim.api.nvim_create_user_command("CMakeBuild", function()
-		M.build_project()
-	end, { desc = "Configure and build project" })
+
+	vim.api.nvim_create_user_command(
+		"CMakeGen",
+		M.generate_cmake,
+		{ desc = "Generate CMakeLists.txt" }
+	)
+	vim.api.nvim_create_user_command(
+		"CMakeBuild",
+		M.build_project,
+		{ desc = "Configure and build project" }
+	)
 	vim.api.nvim_create_user_command("CMakeRun", function(opts)
 		M.run_project(opts.args)
 	end, { desc = "Run project executable", nargs = "*" })
 	vim.api.nvim_create_user_command("CMakeQuick", function(opts)
 		M.quick_run(opts.args)
 	end, { desc = "Build and run (quick)", nargs = "*" })
-	vim.api.nvim_create_user_command("CMakeClean", function()
-		M.clean_project()
-	end, { desc = "Clean build directory" })
+	vim.api.nvim_create_user_command(
+		"CMakeClean",
+		M.clean_project,
+		{ desc = "Clean build directory" }
+	)
+	vim.api.nvim_create_user_command("CMakeType", function(opts)
+		if not opts.args or opts.args == "" then
+			toggle_build_type()
+		else
+			M.set_build_type(opts.args)
+		end
+	end, {
+		desc = "Set or toggle CMAKE_BUILD_TYPE (Debug/Release/RelWithDebInfo/MinSizeRel; empty to toggle)",
+		nargs = "?",
+		complete = function()
+			return { "Debug", "Release", "RelWithDebInfo", "MinSizeRel" }
+		end,
+	})
 end
 
 return M

@@ -3,14 +3,13 @@ return {
 		"catppuccin/nvim",
 		name = "catppuccin",
 		priority = 1000,
-		lazy = false, -- Load immediately
+		lazy = false,
 		config = function()
-			-- Setup Catppuccin with Telescope integration and transparent background
-			require("catppuccin").setup {
+			require("catppuccin").setup({
 				flavour = "frappe",
 				background = { light = "latte", dark = "frappe" },
-				transparent_background = true, -- Enable full transparency
-				float = { transparent = true, solid = false }, -- Transparent floats
+				transparent_background = true,
+				float = { transparent = true, solid = false },
 				show_end_of_buffer = false,
 				term_colors = true,
 				dim_inactive = { enabled = false, shade = "dark", percentage = 0.15 },
@@ -31,7 +30,7 @@ return {
 					types = {},
 					operators = {},
 				},
-				auto_integrations = true, -- Auto-detect and enable integrations
+				auto_integrations = true,
 				integrations = {
 					cmp = true,
 					gitsigns = true,
@@ -39,10 +38,8 @@ return {
 					treesitter = true,
 					notify = true,
 				},
-			}
-
-			-- Apply colorscheme immediately
-			vim.cmd.colorscheme "catppuccin"
+			})
+			vim.cmd.colorscheme("catppuccin")
 		end,
 	},
 }

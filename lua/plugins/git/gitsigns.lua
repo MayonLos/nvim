@@ -7,39 +7,39 @@ return {
 			change = { text = "▎" },
 			delete = { text = "▁" },
 			topdelete = { text = "▔" },
-			changedelete = { text = "▒" },
-			untracked = { text = "┆" },
+			changedelete = { text = "▎" },
+			untracked = { text = "▎" },
 		},
 		numhl = true,
+		linehl = false,
+		word_diff = false,
 		max_file_length = 40000,
+		update_debounce = 100,
 		preview_config = {
 			border = "rounded",
 			style = "minimal",
 			relative = "cursor",
+			row = 0,
+			col = 1,
 		},
-		on_attach = function(bufnr)
-			local gs = require("gitsigns")
-			local function map(mode, lhs, rhs, desc)
-				vim.keymap.set(mode, lhs, rhs, {
-					buffer = bufnr,
-					desc = desc,
-					silent = true,
-				})
-			end
-			map("n", "]c", function()
-				if vim.wo.diff then
-					vim.cmd.normal({ "]c", bang = true })
-				else
-					gs.nav_hunk("next")
-				end
-			end, "Next git hunk")
-			map("n", "[c", function()
-				if vim.wo.diff then
-					vim.cmd.normal({ "[c", bang = true })
-				else
-					gs.nav_hunk("prev")
-				end
-			end, "Previous git hunk")
-		end,
+		current_line_blame = false,
+		current_line_blame_opts = {
+			virt_text = true,
+			virt_text_pos = "eol",
+			delay = 300,
+			ignore_whitespace = false,
+		},
+		signcolumn = true,
+		watch_gitdir = {
+			follow_files = true,
+		},
+		attach_to_untracked = true,
+		sign_priority = 6,
+		status_formatter = nil,
+		diff_opts = {
+			algorithm = "myers",
+			internal = true,
+			indent_heuristic = true,
+		},
 	},
 }
