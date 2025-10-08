@@ -34,21 +34,21 @@ return {
 			["_"] = { "trim_whitespace" },
 		},
 
-		format_on_save = function(bufnr)
-			local bufname = vim.api.nvim_buf_get_name(bufnr)
-			local skip_dirs = { "/node_modules/", "/.git/", "/build/", "/dist/" }
+		-- format_on_save = function(bufnr)
+		-- 	local bufname = vim.api.nvim_buf_get_name(bufnr)
+		-- 	local skip_dirs = { "/node_modules/", "/.git/", "/build/", "/dist/" }
 
-			for _, dir in ipairs(skip_dirs) do
-				if bufname:match(dir) then
-					return nil
-				end
-			end
+		-- 	for _, dir in ipairs(skip_dirs) do
+		-- 		if bufname:match(dir) then
+		-- 			return nil
+		-- 		end
+		-- 	end
 
-			return {
-				timeout_ms = 3000,
-				lsp_fallback = true,
-			}
-		end,
+		-- 	return {
+		-- 		timeout_ms = 3000,
+		-- 		lsp_fallback = true,
+		-- 	}
+		-- end,
 
 		formatters = {
 			stylua = {
