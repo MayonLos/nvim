@@ -73,9 +73,6 @@ local function setup_keymaps(bufnr)
 	map({ "n", "v" }, "<leader>ca", vim.lsp.buf.code_action, "Code Action")
 	map("n", "<leader>cr", vim.lsp.buf.rename, "Rename")
 
-	map("n", "<leader>cf", function()
-		vim.lsp.buf.format({ async = true, timeout_ms = 1500 })
-	end, "Format")
 
 	map("n", "<leader>ld", function()
 		local b = vim.api.nvim_get_current_buf()

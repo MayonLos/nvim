@@ -35,6 +35,7 @@ return {
 		dependencies = {
 			"rafamadriz/friendly-snippets",
 			"fang2hou/blink-copilot",
+			"Kaiser-Yang/blink-cmp-avante",
 		},
 		version = "1.*",
 		opts_extend = { "sources.default" },
@@ -99,8 +100,15 @@ return {
 			},
 
 			sources = {
-				default = { "lsp", "path", "snippets", "copilot", "buffer" },
+				default = { "avante", "lsp", "path", "snippets", "copilot", "buffer" },
 				providers = {
+					avante = {
+						module = "blink-cmp-avante",
+						name = "Avante",
+						opts = {
+						},
+					},
+
 					copilot = {
 						name = "copilot",
 						module = "blink-copilot",

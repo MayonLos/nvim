@@ -174,7 +174,6 @@ function M.setup(opts)
 		end
 	end
 
-	notify("EnhancedEditor loaded")
 end
 
 function M.toggle_yank()
