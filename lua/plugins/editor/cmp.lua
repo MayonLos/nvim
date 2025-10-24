@@ -67,6 +67,7 @@ return {
 			completion = {
 				menu = {
 					draw = {
+                        align_to = "cursor",
 						columns = { { "kind_icon" }, { "label", gap = 1 } },
 						components = {
 							label = {
