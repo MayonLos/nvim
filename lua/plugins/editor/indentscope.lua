@@ -5,28 +5,43 @@ return {
 	dependencies = { "nvim-treesitter/nvim-treesitter" },
 
 	opts = function()
-		-- Optimized color scheme - more modern visual effect
-		local colors = {
-			indent = {
-				"#374151", -- Softer gray
-				"#4B5563",
-				"#6B7280",
-				"#9CA3AF",
-			},
-			scope = "#60A5FA", -- Brighter blue for scope
-			scope_error = "#F87171", -- Error state
-			scope_warn = "#FBBF24", -- Warning state
-		}
+		local hooks = require "ibl.hooks"
 
-		-- Performance-optimized exclude list
+		local function palette()
+			local bg = vim.o.background
+			if bg == "light" then
+				return {
+					indent = { "#D1D5DB", "#9CA3AF", "#6B7280", "#4B5563" },
+					scope = "#2563EB",
+				}
+			end
+			return {
+				indent = { "#3C4556", "#4B5563", "#6B7280", "#9CA3AF" },
+				scope = "#60A5FA",
+			}
+		end
+
+		local indent_hl = { "IBLIndent1", "IBLIndent2", "IBLIndent3", "IBLIndent4" }
+		local scope_hl = "IBLScope"
+
+		-- react to colorscheme changes
+		hooks.register(hooks.type.HIGHLIGHT_SETUP, function()
+			local colors = palette()
+			for i, c in ipairs(colors.indent) do
+				vim.api.nvim_set_hl(0, "IBLIndent" .. i, { fg = c, nocombine = true })
+			end
+			vim.api.nvim_set_hl(0, scope_hl, { fg = colors.scope, bold = true, nocombine = true })
+		end)
+
+		-- treesitter-based scope detection
+		hooks.register(hooks.type.SCOPE_HIGHLIGHT, hooks.builtin.scope_highlight_from_extmark)
+
 		local exclude_ft = {
 			"help",
 			"man",
 			"markdown",
 			"text",
-			"txt",
 			"lazy",
-			"packer",
 			"mason",
 			"lspinfo",
 			"dashboard",
@@ -46,70 +61,28 @@ return {
 			"fugitive",
 			"notify",
 			"aerial",
-			"outline",
+			"Outline",
 			"undotree",
-			"tagbar",
-			"vista",
 			"checkhealth",
-			"lsp-installer",
-			"null-ls-info",
-			"DiffviewFiles",
-			"org",
-			"noice",
 		}
 
-		local exclude_bt = {
-			"terminal",
-			"nofile",
-			"quickfix",
-			"prompt",
-			"popup",
-			"acwrite",
-		}
-
-		-- Smart highlight group setup
-		local function setup_highlights()
-			-- Gradient indent lines
-			for i, color in ipairs(colors.indent) do
-				vim.api.nvim_set_hl(0, "IBLIndent" .. i, { fg = color })
-			end
-
-			-- Scope highlight
-			vim.api.nvim_set_hl(0, "IBLScope", {
-				fg = colors.scope,
-				bold = true,
-				nocombine = true,
-			})
-			vim.api.nvim_set_hl(0, "IBLScopeError", {
-				fg = colors.scope_error,
-				bold = true,
-			})
-			vim.api.nvim_set_hl(0, "IBLScopeWarn", {
-				fg = colors.scope_warn,
-				bold = true,
-			})
-		end
-
-		setup_highlights()
+		local exclude_bt = { "terminal", "nofile", "quickfix", "prompt", "popup", "acwrite" }
 
 		return {
 			enabled = true,
-			debounce = 200, -- Performance: reduce update frequency
-			viewport_buffer = {
-				min = 30, -- Optimized viewport buffer
-				max = 500,
-			},
+			debounce = 150,
+			viewport_buffer = { min = 30, max = 400 },
 
 			indent = {
 				char = "▏",
 				tab_char = "▏",
 				smart_indent_cap = true,
 				priority = 2,
-				repeat_linebreak = true,
+				highlight = indent_hl,
 			},
 
 			whitespace = {
-				highlight = { "IBLIndent1", "IBLIndent2", "IBLIndent3", "IBLIndent4" },
+				highlight = indent_hl,
 				remove_blankline_trail = true,
 			},
 
@@ -120,9 +93,7 @@ return {
 				show_end = false,
 				show_exact_scope = true,
 				injected_languages = true,
-				highlight = { "IBLScope" },
-				priority = 1024,
-				-- Optimized node type detection
+				highlight = { scope_hl },
 				include = {
 					node_type = {
 						["*"] = {
@@ -162,49 +133,7 @@ return {
 
 		ibl.setup(opts)
 
-		-- Smart color theme adaptation
-		hooks.register(hooks.type.HIGHLIGHT_SETUP, function()
-			local bg = vim.o.background
-			local colors = bg == "dark"
-					and {
-						indent = { "#374151", "#4B5563", "#6B7280", "#9CA3AF" },
-						scope = "#60A5FA",
-					}
-				or {
-					indent = { "#E5E7EB", "#D1D5DB", "#9CA3AF", "#6B7280" },
-					scope = "#3B82F6",
-				}
-
-			for i, color in ipairs(colors.indent) do
-				vim.api.nvim_set_hl(0, "IBLIndent" .. i, { fg = color })
-			end
-			vim.api.nvim_set_hl(0, "IBLScope", { fg = colors.scope, bold = true })
-		end)
-
-		-- Enhanced scope highlighting
-		hooks.register(hooks.type.SCOPE_HIGHLIGHT, hooks.builtin.scope_highlight_from_extmark)
-
-		-- Smart performance optimization
-		hooks.register(hooks.type.WHITESPACE, function(_, bufnr, _, whitespace_tbl)
-			local stats = vim.api.nvim_buf_get_changedtick(bufnr)
-			local line_count = vim.api.nvim_buf_line_count(bufnr)
-
-			-- Large file optimization strategy
-			if line_count > 10000 then
-				return {} -- Disable for very large files
-			elseif line_count > 5000 then
-				-- Sample display, reduce computation load
-				local sampled = {}
-				for i = 1, #whitespace_tbl, 2 do
-					sampled[#sampled + 1] = whitespace_tbl[i]
-				end
-				return sampled
-			end
-
-			return whitespace_tbl
-		end)
-
-		-- Convenient commands
+		-- Toggle commands
 		vim.api.nvim_create_user_command("IBLToggle", function()
 			local config = require("ibl.config").get_config(0)
 			ibl.setup_buffer(0, { enabled = not config.enabled })
@@ -218,46 +147,36 @@ return {
 			vim.notify("Scope highlighting " .. (scope_enabled and "disabled" or "enabled"))
 		end, { desc = "Toggle scope highlighting" })
 
-		-- Smart filetype adaptation
+		-- light tweaks per filetype
 		local ft_configs = {
 			json = { scope = { enabled = false } },
 			yaml = { scope = { enabled = false } },
-			python = {
-				indent = { smart_indent_cap = true },
-				scope = { show_exact_scope = true },
-			},
 			markdown = { enabled = false },
 		}
 
 		vim.api.nvim_create_autocmd("FileType", {
 			callback = function(args)
-				local ft = args.match
-				local config = ft_configs[ft]
-				if config then
-					ibl.setup_buffer(0, config)
+				local cfg = ft_configs[args.match]
+				if cfg then
+					ibl.setup_buffer(args.buf, cfg)
 				end
 			end,
-			desc = "Apply filetype-specific indent line settings",
+			desc = "Indent lines: filetype adjustments",
 		})
 
-		-- Memory cleanup optimization
-		vim.api.nvim_create_autocmd({ "BufDelete", "BufWipeout" }, {
-			callback = function(args)
-				if vim.api.nvim_buf_is_valid(args.buf) then
-					pcall(ibl.debounced_refresh, args.buf)
+		-- soften cost on very large files by thinning whitespace data
+		hooks.register(hooks.type.WHITESPACE, function(_, bufnr, _, whitespace_tbl)
+			local line_count = vim.api.nvim_buf_line_count(bufnr)
+			if line_count > 10000 then
+				return {}
+			elseif line_count > 5000 then
+				local sampled = {}
+				for i = 1, #whitespace_tbl, 2 do
+					sampled[#sampled + 1] = whitespace_tbl[i]
 				end
-			end,
-			desc = "Cleanup indent-blankline resources",
-		})
-
-		-- On-demand loading optimization
-		vim.api.nvim_create_autocmd("VimResized", {
-			callback = function()
-				vim.schedule(function()
-					ibl.refresh_all()
-				end)
-			end,
-			desc = "Refresh indent lines on window resize",
-		})
+				return sampled
+			end
+			return whitespace_tbl
+		end)
 	end,
 }

@@ -3,6 +3,9 @@ return {
 		"akinsho/bufferline.nvim",
 		version = "*",
 		event = "VeryLazy",
+		keys = function()
+			return require("core.keymaps").plugin("bufferline")
+		end,
 		dependencies = {
 			"nvim-tree/nvim-web-devicons",
 			"catppuccin/nvim",
@@ -124,34 +127,6 @@ return {
 					return {}
 				end)(),
 			}
-
-			vim.keymap.set("n", "<Tab>", "<cmd>BufferLineCycleNext<cr>", { desc = "Next buffer" })
-			vim.keymap.set("n", "<S-Tab>", "<cmd>BufferLineCyclePrev<cr>", { desc = "Prev buffer" })
-			vim.keymap.set("n", "<leader>bp", "<cmd>BufferLineTogglePin<cr>", { desc = "Pin/Unpin buffer" })
-			vim.keymap.set(
-				"n",
-				"<leader>bP",
-				"<cmd>BufferLineGroupClose ungrouped<cr>",
-				{ desc = "Close unpinned buffers" }
-			)
-			vim.keymap.set("n", "<leader>br", "<cmd>BufferLineCloseRight<cr>", { desc = "Close buffers to right" })
-			vim.keymap.set("n", "<leader>bl", "<cmd>BufferLineCloseLeft<cr>", { desc = "Close buffers to left" })
-			vim.keymap.set("n", "<leader>bo", "<cmd>BufferLineCloseOthers<cr>", { desc = "Close other buffers" })
-			vim.keymap.set("n", "<leader>bd", "<cmd>bdelete<cr>", { desc = "Close buffer" })
-			vim.keymap.set("n", "<leader>bD", "<cmd>bdelete!<cr>", { desc = "Force close buffer" })
-			vim.keymap.set("n", "<leader>bmh", "<cmd>BufferLineMovePrev<cr>", { desc = "Move buffer left" })
-			vim.keymap.set("n", "<leader>bml", "<cmd>BufferLineMoveNext<cr>", { desc = "Move buffer right" })
-			vim.keymap.set("n", "<leader>bs", "<cmd>BufferLinePick<cr>", { desc = "Pick buffer" })
-			vim.keymap.set("n", "<leader>bsd", "<cmd>BufferLinePickClose<cr>", { desc = "Pick buffer to close" })
-			for i = 1, 9 do
-				vim.keymap.set("n", "<C-" .. i .. ">", function()
-					bufferline.go_to(i, true)
-				end, { desc = "Switch to buffer " .. i })
-			end
-			vim.keymap.set("n", "<leader><leader>", "<cmd>buffer #<cr>", { desc = "Toggle last buffer" })
-
-			vim.keymap.set("n", "<leader>be", "<cmd>BufferLineSortByExtension<cr>", { desc = "Sort by extension" })
-			vim.keymap.set("n", "<leader>bd", "<cmd>BufferLineSortByDirectory<cr>", { desc = "Sort by directory" })
 		end,
 	},
 
@@ -162,6 +137,7 @@ return {
 			"nvim-tree/nvim-web-devicons",
 			"lewis6991/gitsigns.nvim",
 			"catppuccin/nvim",
+			"SmiteshP/nvim-navic",
 		},
 		config = function()
 			local heirline = require "heirline"
@@ -169,6 +145,13 @@ return {
 			local devicons = require "nvim-web-devicons"
 			local api, fn = vim.api, vim.fn
 			local diag = vim.diagnostic
+
+			require("nvim-navic").setup({
+				highlight = true,
+				separator = " > ",
+				lazy_update_context = false,
+				safe_output = true,
+			})
 
 			local colors = require("catppuccin.palettes").get_palette(vim.g.catppuccin_flavour or "mocha")
 
@@ -269,13 +252,13 @@ return {
 					provider = function(self)
 						local t = {}
 						if self.modified then
-							t[#t + 1] = "󰜄"
+							t[#t + 1] = "󰜄 "
 						end
 						if self.readonly then
-							t[#t + 1] = "󰌾"
+							t[#t + 1] = "󰌾 "
 						end
 						if vim.bo.buftype == "help" then
-							t[#t + 1] = "󰘥"
+							t[#t + 1] = "󰘥 "
 						end
 						return (#t > 0) and (" " .. table.concat(t, " ")) or ""
 					end,
@@ -374,6 +357,24 @@ return {
 				update = { "DiagnosticChanged", "BufEnter" },
 			}
 
+			local Navic = {
+				condition = function()
+					local ok, navic = pcall(require, "nvim-navic")
+					return ok and navic.is_available()
+				end,
+				update = "CursorMoved",
+				provider = function()
+					return (" %s"):format(
+						require("nvim-navic").get_location({
+							separator = " > ",
+							highlight = true,
+							safe_output = true,
+						})
+					)
+				end,
+				hl = { fg = colors.subtext1 },
+			}
+
 			local LSP = {
 				condition = require("heirline.conditions").lsp_attached,
 				init = function(self)
@@ -446,6 +447,7 @@ return {
 				FileInfo,
 				Git,
 				Diagnostics,
+				Navic,
 				Align,
 				Space,
 				LSP,

@@ -1,6 +1,9 @@
 return {
 	"nvim-treesitter/nvim-treesitter-context",
 	event = { "BufReadPost", "BufNewFile" },
+	keys = function()
+		return require("core.keymaps").plugin("treesitter-context")
+	end,
 	opts = {
 		enable = true,
 		max_lines = 4,
@@ -14,8 +17,5 @@ return {
 	},
 	config = function(_, opts)
 		require("treesitter-context").setup(opts)
-		vim.keymap.set("n", "[x", function()
-			require("treesitter-context").go_to_context(vim.v.count1)
-		end, { silent = true, desc = "Go to context" })
 	end,
 }

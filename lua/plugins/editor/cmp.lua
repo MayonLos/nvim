@@ -55,8 +55,6 @@ return {
 				["<C-f>"] = { "scroll_documentation_down", "fallback" },
 				["<Tab>"] = { "select_next", "fallback" },
 				["<S-Tab>"] = { "select_prev", "fallback" },
-				-- ["<Tab>"] = { "snippet_forward", "fallback" },
-				-- ["<S-Tab>"] = { "snippet_backward", "fallback" },
 				["<C-k>"] = { "show_signature", "hide_signature", "fallback" },
 			},
 
@@ -67,18 +65,7 @@ return {
 			completion = {
 				menu = {
 					draw = {
-                        align_to = "cursor",
-						columns = { { "kind_icon" }, { "label", gap = 1 } },
-						components = {
-							label = {
-								text = function(ctx)
-									return require("colorful-menu").blink_components_text(ctx)
-								end,
-								highlight = function(ctx)
-									return require("colorful-menu").blink_components_highlight(ctx)
-								end,
-							},
-						},
+						align_to = "cursor",
 					},
 				},
 				documentation = {
@@ -106,8 +93,7 @@ return {
 					avante = {
 						module = "blink-cmp-avante",
 						name = "Avante",
-						opts = {
-						},
+						opts = {},
 					},
 
 					copilot = {

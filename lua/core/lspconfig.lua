@@ -1,5 +1,8 @@
 local M = {}
 
+-- ============================================================================
+-- Diagnostics
+-- ============================================================================
 local function setup_diagnostics()
 	local s = vim.diagnostic.severity
 
@@ -45,100 +48,82 @@ local function setup_diagnostics()
 
 	vim.opt.signcolumn = "yes"
 	vim.opt.updatetime = 250
-
 	vim.o.winborder = "rounded"
-
 	vim.lsp.log.set_level(vim.log.levels.WARN)
 end
 
-local function setup_keymaps(bufnr)
-	local function map(mode, lhs, rhs, desc)
-		vim.keymap.set(mode, lhs, rhs, {
-			buffer = bufnr,
-			silent = true,
-			noremap = true,
-			desc = "LSP: " .. desc,
-		})
-	end
-
-	map("n", "K", function()
-		vim.lsp.buf.hover({ focusable = false, max_width = 80, max_height = 20 })
-	end, "Hover")
-
-	map("n", "gd", vim.lsp.buf.definition, "Go to Definition")
-	map("n", "gD", vim.lsp.buf.declaration, "Go to Declaration")
-	map("n", "gi", vim.lsp.buf.implementation, "Go to Implementation")
-	map("n", "gr", vim.lsp.buf.references, "References")
-
-	map({ "n", "v" }, "<leader>ca", vim.lsp.buf.code_action, "Code Action")
-	map("n", "<leader>cr", vim.lsp.buf.rename, "Rename")
-
-
-	map("n", "<leader>ld", function()
-		local b = vim.api.nvim_get_current_buf()
-		local disabled = vim.b[b]._diag_disabled
-		vim.b[b]._diag_disabled = not disabled
-		vim.diagnostic.enable(not disabled, { bufnr = b })
-	end, "Toggle Diagnostics")
-end
-
-local function make_on_attach()
-	return function(client, bufnr)
-		setup_keymaps(bufnr)
-
-		local ok_blink = pcall(require, "blink.cmp")
-		if (not ok_blink) and client:supports_method("textDocument/completion") then
-			pcall(vim.lsp.completion.enable, true, client.id, bufnr, { autotrigger = true })
-		end
-
-		if client:supports_method("textDocument/inlayHint") and vim.lsp.inlay_hint then
-			vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
-			vim.keymap.set("n", "<leader>li", function()
-				local enabled = vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr })
-				vim.lsp.inlay_hint.enable(not enabled, { bufnr = bufnr })
-			end, { buffer = bufnr, desc = "LSP: Toggle Inlay Hints" })
-		end
-
-		if client:supports_method("textDocument/documentHighlight") then
-			local group =
-				vim.api.nvim_create_augroup("lsp_document_highlight_" .. bufnr, { clear = true })
-			vim.api.nvim_create_autocmd({ "CursorHold", "CursorHoldI" }, {
-				group = group,
-				buffer = bufnr,
-				callback = vim.lsp.buf.document_highlight,
-			})
-			vim.api.nvim_create_autocmd("CursorMoved", {
-				group = group,
-				buffer = bufnr,
-				callback = vim.lsp.buf.clear_references,
-			})
-		end
-
-		if client.name == "texlab" then
-			local function tex_map(lhs, cmd, desc)
-				vim.keymap.set("n", lhs, function()
-					client:exec_cmd({ command = cmd }, { bufnr = bufnr })
-				end, { buffer = bufnr, desc = "LaTeX: " .. desc })
-			end
-			tex_map("<leader>lb", "texlab.build", "Build")
-			tex_map("<leader>lv", "texlab.forwardSearch", "Forward Search")
-		end
-	end
-end
-
+-- ============================================================================
+-- Capabilities / on_attach
+-- ============================================================================
 local function get_capabilities()
-	local caps
 	local ok, blink = pcall(require, "blink.cmp")
 	if ok and blink and blink.get_lsp_capabilities then
-		caps = blink.get_lsp_capabilities()
-	else
-		caps = vim.lsp.protocol.make_client_capabilities()
+		local caps = blink.get_lsp_capabilities()
+		caps.textDocument = caps.textDocument or {}
+		caps.textDocument.foldingRange = { dynamicRegistration = false, lineFoldingOnly = true }
+		return caps
 	end
+
+	local caps = vim.lsp.protocol.make_client_capabilities()
 	caps.textDocument = caps.textDocument or {}
 	caps.textDocument.foldingRange = { dynamicRegistration = false, lineFoldingOnly = true }
 	return caps
 end
 
+local function enable_builtin_completion(client, bufnr)
+	local ok_blink = pcall(require, "blink.cmp")
+	if ok_blink or not client:supports_method("textDocument/completion") then
+		return
+	end
+	pcall(vim.lsp.completion.enable, true, client.id, bufnr, { autotrigger = true })
+end
+
+local function setup_document_highlight(client, bufnr)
+	if not client:supports_method("textDocument/documentHighlight") then
+		return
+	end
+
+	local group = vim.api.nvim_create_augroup("lsp_document_highlight_" .. bufnr, { clear = true })
+	vim.api.nvim_create_autocmd({ "CursorHold", "CursorHoldI" }, {
+		group = group,
+		buffer = bufnr,
+		callback = vim.lsp.buf.document_highlight,
+	})
+	vim.api.nvim_create_autocmd("CursorMoved", {
+		group = group,
+		buffer = bufnr,
+		callback = vim.lsp.buf.clear_references,
+	})
+end
+
+local function setup_inlay_hints(client, bufnr)
+	if vim.lsp.inlay_hint and client:supports_method("textDocument/inlayHint") then
+		vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
+		return true
+	end
+	return false
+end
+
+local function make_on_attach()
+	return function(client, bufnr)
+		enable_builtin_completion(client, bufnr)
+		local has_inlay_hints = setup_inlay_hints(client, bufnr)
+		setup_document_highlight(client, bufnr)
+
+		local ok_keys, keys = pcall(require, "core.keymaps")
+		if ok_keys and keys.lsp then
+			keys.lsp(bufnr, {
+				supports_inlay_hints = has_inlay_hints,
+				client_name = client.name,
+				client_id = client.id,
+			})
+		end
+	end
+end
+
+-- ============================================================================
+-- Servers
+-- ============================================================================
 local function setup_servers()
 	local capabilities = get_capabilities()
 	local on_attach = make_on_attach()
@@ -230,6 +215,9 @@ local function setup_servers()
 	vim.lsp.enable(M._server_names)
 end
 
+-- ============================================================================
+-- Extras
+-- ============================================================================
 local function setup_ufo()
 	local ok, ufo = pcall(require, "ufo")
 	if not ok then
@@ -302,6 +290,9 @@ local function setup_commands()
 	end, { desc = "Open LSP log file" })
 end
 
+-- ============================================================================
+-- Public API
+-- ============================================================================
 function M.setup()
 	setup_diagnostics()
 	setup_servers()

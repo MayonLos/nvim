@@ -7,95 +7,9 @@ return {
 			"nvim-neotest/nvim-nio",
 			"theHamsta/nvim-dap-virtual-text",
 		},
-		keys = {
-			{
-				"<F5>",
-				function()
-					require("dap").continue()
-				end,
-				desc = "DAP Continue",
-			},
-			{
-				"<S-F5>",
-				function()
-					require("dap").terminate()
-				end,
-				desc = "DAP Terminate",
-			},
-			{
-				"<F10>",
-				function()
-					require("dap").step_over()
-				end,
-				desc = "DAP Step Over",
-			},
-			{
-				"<F11>",
-				function()
-					require("dap").step_into()
-				end,
-				desc = "DAP Step Into",
-			},
-			{
-				"<S-F11>",
-				function()
-					require("dap").step_out()
-				end,
-				desc = "DAP Step Out",
-			},
-
-			{
-				"<leader>db",
-				function()
-					require("dap").toggle_breakpoint()
-				end,
-				desc = "DAP Toggle Breakpoint",
-			},
-			{
-				"<leader>dB",
-				function()
-					require("dap").set_breakpoint(vim.fn.input "Condition: ")
-				end,
-				desc = "DAP Conditional Breakpoint",
-			},
-			{
-				"<leader>dl",
-				function()
-					require("dap").set_breakpoint(nil, nil, vim.fn.input "Log: ")
-				end,
-				desc = "DAP Log Point",
-			},
-
-			{
-				"<leader>du",
-				function()
-					require("dapui").toggle {}
-				end,
-				desc = "DAP UI Toggle",
-			},
-			{
-				"<leader>dr",
-				function()
-					require("dap").repl.open()
-				end,
-				desc = "DAP REPL",
-			},
-			{
-				"<leader>de",
-				function()
-					require("dap.ui.widgets").hover()
-				end,
-				desc = "DAP Eval (Hover)",
-			},
-			{
-				"<leader>dE",
-				function()
-					local w = require "dap.ui.widgets"
-					w.centered_float(w.scopes)
-				end,
-				desc = "DAP Scopes Float",
-			},
-		},
+		keys = function()
+			return require("core.keymaps").plugin("dap")
+		end,
 
 		config = function()
 			local dap = require "dap"
@@ -237,14 +151,7 @@ return {
 			dap.configurations.c = codelldb_cfg
 			dap.configurations.cpp = codelldb_cfg
 
-			if not dap.restart then
-				vim.keymap.set("n", "<leader>dR", function()
-					dap.terminate()
-					vim.defer_fn(function()
-						dap.run_last()
-					end, 200)
-				end, { desc = "DAP Restart" })
-			end
+			-- Restart mapping handled via core.keymaps
 		end,
 	},
 

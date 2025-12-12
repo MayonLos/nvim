@@ -3,10 +3,9 @@ return {
 		"nvim-neo-tree/neo-tree.nvim",
 		branch = "v3.x",
 		cmd = "Neotree",
-		keys = {
-			{ "<leader>ee", "<cmd>Neotree toggle<cr>", desc = "Toggle explorer" },
-			{ "<leader>ef", "<cmd>Neotree focus<cr>", desc = "Focus explorer" },
-		},
+		keys = function()
+			return require("core.keymaps").plugin("neotree")
+		end,
 		dependencies = {
 			"nvim-lua/plenary.nvim",
 			"nvim-tree/nvim-web-devicons",

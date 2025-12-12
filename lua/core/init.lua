@@ -1,7 +1,6 @@
 for _, module_name in ipairs({
 	"core.options",
 	"core.autocmds",
-	"core.command",
 	"core.keymaps",
 	"core.lspconfig",
 }) do

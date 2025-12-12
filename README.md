@@ -1,203 +1,63 @@
-## 🛠️ Prerequisites / 环境依赖说明
+## ✨ MayonLos Neovim 配置
 
-为了让本配置正常运行，请先确保以下通用依赖已正确安装：
+现代、清爽、实用的 Neovim 配置（lazy.nvim）。内置 LSP/补全/Treesitter/Git/UI 增强，偏向开箱即用。
 
-### 📦 通用依赖项
+## 🛠️ 环境要求
 
-| 功能           | 说明与建议                                          |
-| -------------- | --------------------------------------------------- |
-| 文件搜索工具   | `fd`（Ubuntu 中为 `fdfind`）+ `ripgrep` (`rg`)      |
-| 解压缩工具     | `unzip`                                             |
-| 编译环境       | `make`, `gcc`, `base-devel`（或 `build-essential`） |
-| Git 支持       | `git`                                               |
-| Nerd Font 字体 | 推荐安装 [JetBrainsMono Nerd Font][nerdfont]        |
-| 剪贴板工具     | `xclip`（X11）或 `wl-clipboard`（Wayland）          |
-| Python 环境    | `python3` + `pip`                                   |
-| Node.js 环境   | `nodejs` + `npm`                                    |
-| Lua 环境       | `lua`, `luajit`, `luarocks`                         |
-| 下载工具       | `curl`（部分插件如 `llm.nvim` 使用）                |
+- Neovim 0.10+
+- Git（用于自动安装 lazy.nvim）
+- 推荐：`fd`/`rg`、Nerd Font、`xclip`/`wl-clipboard`
 
----
+## 🚀 快速上手
 
-### 🖥️ 按操作系统安装（命令参考）
+1. 启动 Neovim，会自动安装插件管理器与插件。
+2. 终端切换 Nerd Font。
+3. 按 `<leader>`（空格）后等待 which-key 提示。
 
-#### ✅ Arch / Manjaro
-
-```bash
-sudo pacman -S --needed fd ripgrep unzip base-devel git \
-  luarocks python python-pip nodejs npm \
-  xclip curl make gcc oniguruma
-
-# Nerd Font（如使用 JetBrainsMono）
-yay -S ttf-jetbrains-mono-nerd
-```
-
-#### ✅ Ubuntu / Debian
-
-```bash
-sudo apt update && sudo apt install -y \
-  fd-find ripgrep unzip build-essential git \
-  luarocks python3 python3-pip nodejs npm \
-  xclip curl make gcc
-
-# 创建 fd 软链接（Ubuntu 使用 fdfind）
-mkdir -p ~/.local/bin
-ln -s $(which fdfind) ~/.local/bin/fd
-```
-
-> 💡 若使用 Telescope 等插件，`fd` 与 `rg` 是必须的。
-
-#### ✅ macOS (Homebrew)
-
-```bash
-brew install fd ripgrep unzip git luarocks python node \
-  xclip curl gcc make
-
-brew tap homebrew/cask-fonts
-brew install --cask font-jetbrains-mono-nerd-font
-```
-
----
-
-### ✅ 验证依赖是否可用（可选）
-
-## ✨ MayonLos Neovim 配置（基于 lazy.nvim）
-
-> 现代、清爽、实用的 Neovim 配置。内置 LSP、补全、Treesitter、Git、UI 增强，以及便捷的代码运行与 CMake 工作流命令。
-
----
-
-## ✅ 要求与环境
-
-- Neovim 0.10+（本配置使用了 0.10 的 LSP 与 API）
-- Git（用于自动安装插件管理器 lazy.nvim）
-- 推荐：ripgrep（rg）、fd、Nerd Font 字体、xclip/wl-clipboard（Linux 剪贴板）
-
-快速安装依赖（示例）
-
-- Arch/Manjaro
-  - pacman: fd ripgrep unzip base-devel git python nodejs npm xclip curl make gcc
-- Ubuntu/Debian
-  - apt: fdfind ripgrep unzip build-essential git python3 python3-pip nodejs npm xclip curl make gcc
-  - fd 软链：ln -s $(which fdfind) ~/.local/bin/fd
-- macOS
-  - brew: fd ripgrep git python node curl gcc make；并安装 Nerd Font
-
-WSL 剪贴板：可使用 win32yank（参考旧 README 片段）。
-
----
-
-## � 开始使用
-
-1. 首次启动 Neovim 会自动安装 lazy.nvim 与插件
-2. 推荐安装 Nerd Font，终端切换到对应字体
-3. 使用 which-key 查看可用前缀与分组
-
-目录结构（关键部分）
+## 📂 目录结构（要点）
 
 ```
 lua/
-  config/lazy.lua          # lazy.nvim 安装与插件注册
-  core/                    # 基础配置
-    options.lua            # 通用选项
-    autocmds.lua           # 自动命令（高亮 yank、恢复光标、自动建目录等）
-    lspconfig.lua          # LSP/诊断/按键
-    command/               # 自定义命令合集
-      runners.lua          # 代码运行器（多语言）
-      cmake.lua            # CMake 集成（配置/构建/运行/清理）
-      url.lua              # URL 打开/复制/搜索
-  plugins/                 # 插件配置（UI/编辑/工具/树/Markdown/Git）
+  config/lazy.lua   # lazy.nvim 配置
+  core/             # 基础配置（options/autocmds/keymaps/lspconfig）
+  plugins/          # 分组的插件配置
 ```
 
-init.lua 入口：
+## 🎹 常用快捷键（前缀分类）
 
-```lua
-vim.g.mapleader = ' '
-vim.g.maplocalleader = '\\'
-require 'core'
-require 'config.lazy'
-```
+| 前缀/键位             | 作用                                      |
+| --------------------- | ----------------------------------------- |
+| `<leader>f f/g/b/r/h` | FzfLua：文件/全局搜索/缓冲区/最近/帮助     |
+| `<leader>f .`         | 当前缓冲区行内搜索                         |
+| `<leader>e e/f`       | Neo-tree：切换/聚焦                       |
+| `<leader>b …`         | Bufferline：切换/固定/排序/关闭/跳转       |
+| `<leader>d …`         | DAP 调试：启动/断点/REPL/UI 等            |
+| `<leader>l h`         | Clangd：源/头切换                         |
+| `<leader>l a/s/t/m`   | Clangd：AST/符号信息/类型层级/内存使用    |
+| `<leader>l f`         | 格式化（Conform）                         |
+| `<leader>x x`         | 打开诊断列表（Trouble）                   |
+| `<leader>t`           | Todo-comments 列表                         |
+| `<leader>u`           | UndoTree 切换                              |
+| `<leader>a c`         | Codex 浮动终端                             |
+| `<C-\\>`              | ToggleTerm 浮动终端                        |
+| `zR/zM/zr/zm/zp`      | UFO 折叠：全开/全关/部分开/收起/预览       |
+| `<C-/>`, `gc`, `gb`   | Comment.nvim 行/块注释（含插入/可视模式） |
 
-lazy.nvim 插件分类：UI、Editor、Tools、Coding、Treesitter、Git、Markdown。
+## 🧠 LSP 相关
 
----
+- `K` 悬浮文档，`gd/gD/gi/gr` 跳转，`<leader>ca` CodeAction，`<leader>cr` Rename
+- `<leader>ld` 切换诊断虚拟文本，`<leader>li` 切换 inlay hints
+- 状态栏展示 LSP 客户端与 nvim-navic 面包屑
 
-## 🧩 主要功能概览
+## 🔍 组件概览
 
-- UI：状态栏/面包屑/滚动条/Noice 消息、启动页、主题
-- 编辑增强：自动配对、缩进指引、注释、which-key 分组提示
-- 代码智能：内置 LSP（clangd、pyright、lua_ls、marksman），诊断/悬浮/重命名/格式化
-- 补全：与 blink/cmp 集成（按配置自动启用）
-- Treesitter：语法高亮、文本对象、上下文、注释、彩虹括号
-- Git：gitsigns
-- Markdown：render-markdown
-- 调试：DAP
-- 工具：fzf、neo-tree、undotree、which-key、LeetCode、CodeCompanion（含扩展）
-- 自定义命令：代码运行器、CMake 工作流、URL 工具
+- UI：Heirline 状态栏、Navic 面包屑、Noice、Barbecue、Starter
+- 编辑：自动配对、缩进指示（ibl）、Comment.nvim、which-key
+- 代码：LSP（clangd/pyright/lua_ls/marksman）、格式化（Conform）、调试（nvim-dap + ui）
+- Treesitter：高亮、文本对象、上下文、彩虹括号
+- 工具：FzfLua、Neo-tree、ToggleTerm、Undotree、Todo-comments
 
----
-
-## 🧠 LSP 与按键
-
-通用 LSP 按键（Normal 模式，见 `core/lspconfig.lua`）：
-
-- K：Hover 文档
-- gd/gD/gi/gr：定义/声明/实现/引用
-- <leader>ca：Code Action
-- <leader>cr：Rename
-- <leader>cf：Format（异步，1.5s 超时）
-- <leader>ld：切换当前缓冲区诊断开关
-- <leader>li：切换 Inlay Hints（支持的语言）
-
-诊断 UI 已优化：虚拟文本、浮窗、Signs、排序、插入模式不更新等。
-
----
-
-## 🧪 代码运行器（`core/command/runners.lua`）
-
-命令：
-
-- :RunCode — 运行当前文件（自动保存、为 C/C++/Rust 提供编译+运行；其余直接运行）
-- :RunCodeToggle — 在 Debug/Release 间切换（影响编译 flags）
-- :RunCodeLanguages — 查看支持的语言列表
-
-特性：
-
-- 浮动终端（圆角边框，Esc/q 关闭；执行完成后保持终端模式）
-- 布局可选：center/bottom/right；可清屏再执行；可设置超时
-- C/C++/Rust：分阶段 compile/run/clean；自动提示与清理
-- 语言支持：c/cpp/rs/go/py/js/ts/lua/java/sh
-
----
-
-## 🧱 CMake 集成（`core/command/cmake.lua`）
-
-命令：
-
-- :CMakeGen — 生成基础 CMakeLists.txt（自动收集源码/包含目录）
-- :CMakeConfigure — 仅配置（自动选择或自定义 Generator）
-- :CMakeBuild[ target] — 构建（并行度自动检测，支持目标）
-- :CMakeRun [args] — 运行可执行文件（自动判断路径/多配置目录）
-- :CMakeQuick [args] — 一键配置+构建+运行
-- :CMakeClean — 清理构建目录
-
-默认行为：
-
-- 自动检测生成器（优先 Ninja；否则 Unix Makefiles），并对带空格的名称进行正确引用
-- 并行度按 CPU 核数自动检测
-- 终端窗口与运行器一致的 UX（圆角、按键、自动插入）
-
-自定义示例：
-
-```lua
-require('core.command.cmake').setup({
-  build_dir = 'build',
-  build_type = 'Debug', -- 或 'Release' 等
-  generator = 'Ninja',  -- 或 'Unix Makefiles'
-})
-```
-
-常见问题：
+[nerdfont]: https://www.nerdfonts.com/
 
 - Could not create named generator Unix：请确保生成器名称完整并已正确安装（如 Ninja/Make）；必要时在 setup 中显式设置 `generator = "Unix Makefiles"`。
 

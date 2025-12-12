@@ -2,16 +2,9 @@ return {
 	"stevearc/conform.nvim",
 	event = { "BufWritePre" },
 	cmd = { "ConformInfo" },
-	keys = {
-		{
-			"<leader>lf",
-			function()
-				require("conform").format({ async = true, lsp_fallback = true })
-			end,
-			mode = { "n", "v" },
-			desc = "Format buffer",
-		},
-	},
+	keys = function()
+		return require("core.keymaps").plugin("conform")
+	end,
 	opts = {
 		default_format_opts = {
 			timeout_ms = 3000,

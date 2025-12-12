@@ -1,13 +1,9 @@
 return {
 	"mbbill/undotree",
 	cmd = "UndotreeToggle",
-	keys = {
-		{
-			"<leader>u",
-			"<cmd>UndotreeToggle<cr>",
-			desc = "Toggle UndoTree",
-		},
-	},
+	keys = function()
+		return require("core.keymaps").plugin("undotree")
+	end,
 	init = function()
 		vim.g.undotree_WindowLayout = 2
 		vim.g.undotree_SplitWidth = 40
